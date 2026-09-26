@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Sistema de análisis agrometeorológico, balance hídrico y evaluación económica para cultivo de maíz en Jutiapa, Guatemala.">
+  <title>AGRO-JUTIAPA • Viabilidad Agrometeorológica y Siembra</title>
+
+  <!-- Tipografías: Plus Jakarta Sans + Inter + JetBrains Mono + Playfair Display + Homemade Apple -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Homemade+Apple&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Estilos Principales -->
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Chart.js para visualización de balance hídrico -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- FONDO DIFUMINADO AMBIENTAL (IMAGEN DE CAMPO DE MAÍZ + GLOWS ORGÁNICOS) -->
+  <div class="ambient-blur-container" aria-hidden="true">
+    <div class="blur-glow blur-green"></div>
+    <div class="blur-glow blur-amber"></div>
+    <div class="blur-glow blur-sky"></div>
+    <img src="img/green_cornfield_landscape.jpg" alt="" class="ambient-blurred-image">
+  </div>
+
+  <div class="app-container">
+    
+    <!-- BARRA DE NAVEGACIÓN TRANSLÚCIDA CON EMBLEMA DISTINTIVO (KAAX TECHNOLOGIES 2871) -->
+    <header class="top-navbar">
+      <a href="#" class="brand-wrapper" aria-label="Inicio">
+        <div class="brand-emblem">AG</div>
+        <div class="brand-text-block">
+          <div class="brand-title-row">
+            <span class="brand-title">AGRO-JUTIAPA</span>
+            <span class="brand-tech-badge">TECHNOLOGIES</span>
+          </div>
+          <span class="brand-sub">Inteligencia Agrometeorológica y Siembra</span>
+        </div>
+      </a>
+      
+      <nav class="nav-menu-links">
+        <a href="#hitos" class="nav-action-link">Hitos</a>
+        <a href="#nosotros" class="nav-action-link">Soluciones</a>
+        <a href="#galeria" class="nav-action-link">Parcelas</a>
+        <a href="#workspace" class="nav-action-link">Calculadora</a>
+        <a href="#faq" class="nav-action-link">Preguntas</a>
+        <a href="#workspace" class="nav-cta-btn">
+          <span>Comenzar</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+      </nav>
+    </header>
+
+    <!-- SECCIÓN HERO EDITORIAL: LLEGA CON TRANSICIÓN SUAVE DESDE AMBOS LADOS -->
+    <section class="hero-editorial-grid">
+      <!-- Columna de Texto: Entra desde la izquierda -->
+      <div class="hero-text-col reveal-on-scroll from-left">
+        <h1 class="hero-heading">
+          Viabilidad Hídrica y <span class="accent-word">Siembra de Maíz</span>
+        </h1>
+        
+        <p class="hero-lead-text">
+          Anticipe el balance hídrico del cultivo con 45 años de reanálisis satelital ERA5, física de suelos Saxton &amp; Rawls y evaluación económica oficial del MAGA.
+        </p>
+
+        <!-- 3 Métricas Destacadas sin sobrecarga visual -->
+        <div class="hero-stats-row">
+          <div class="stat-cell">
+            <span class="stat-number">&ge; 90%</span>
+            <span class="stat-label">Demanda hídrica mínima</span>
+          </div>
+
+          <div class="stat-cell">
+            <span class="stat-number">60 Días</span>
+            <span class="stat-label">Ventana crítica fenológica</span>
+          </div>
+
+          <div class="stat-cell">
+            <span class="stat-number">Q 220.00</span>
+            <span class="stat-label">Precio oficial MAGA / quintal</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Columna Fotográfica: Desplazamiento reactivo desde la derecha -->
+      <div class="hero-photo-wrap hero-photo-slider" id="heroPhotoWrap">
+        <img src="img/green_cornfield_landscape.jpg" alt="Parcelas y cultivo de maíz en valles de Jutiapa" class="hero-photo">
+      </div>
+    </section>
+
+    <!-- ==============================================================================
+         SECCIÓN OCULTA (CARRUSEL EDITORIAL DE SERVICIOS)
+         Para volver a mostrar, retire los delimitadores de comentario <!-- y -->
+    ==============================================================================
+    <section class="tech-section" id="servicios">
+      <div class="carousel-header-wrap reveal-on-scroll from-bottom">
+        <div class="carousel-title-col">
+          <h2 class="section-title">Soluciones Integrales para la Siembra de Maíz</h2>
+          <p class="section-sub-desc">Tecnología agrometeorológica y científica para maximizar el rendimiento en Jutiapa.</p>
+        </div>
+        <div class="carousel-controls-col">
+          <div class="carousel-counter" id="carouselCounter">
+            <span class="counter-current">01</span>
+            <span class="counter-sep">/</span>
+            <span class="counter-total">05</span>
+          </div>
+          <div class="carousel-nav-btns">
+            <button class="carousel-nav-btn prev" id="carouselPrevBtn" aria-label="Tarjeta anterior">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <button class="carousel-nav-btn next" id="carouselNextBtn" aria-label="Siguiente tarjeta">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      [-- Carrusel con Snap Nativo, Drag & Swipe Físico --]
+      <div class="carousel-wrapper reveal-on-scroll from-bottom delay-1">
+        <div class="carousel-viewport" id="servicesCarouselViewport">
+          <div class="carousel-track" id="servicesCarouselTrack">
+            [-- Slide 1: Suelos Saxton & Rawls --]
+            <article class="carousel-slide-card" data-index="0">
+              <div class="slide-photo-box">
+                <img src="img/corn_ear_plant.jpg" alt="Hileras y germinación de maíz en suelo franco-arcilloso" class="slide-card-photo">
+                <span class="slide-badge-category">Edafología &amp; Agua</span>
+              </div>
+              <div class="slide-card-content">
+                <h3 class="slide-card-title">Física de Suelos Saxton &amp; Rawls</h3>
+                <p class="slide-card-desc">
+                  Balance de retención hídrica en perfil Franco-Arcillo-Arenoso (Capacidad de campo 28.4%, marchitez 15.2%) para enraizamiento seguro.
+                </p>
+                <div class="slide-meta-row">
+                  <span class="slide-meta-tag">Textura: Fr-Ar-Ar</span>
+                  <span class="slide-meta-tag">Humedad Útil: 13.2%</span>
+                </div>
+              </div>
+            </article>
+
+            [-- Slide 2: Reanálisis Satelital ERA5 & NOAA --]
+            <article class="carousel-slide-card" data-index="1">
+              <div class="slide-photo-box">
+                <img src="img/jutiapa_corn_field.jpg" alt="Parcelas de cultivo de maíz en Jutiapa bajo el sol" class="slide-card-photo">
+                <span class="slide-badge-category">Clima Satelital</span>
+              </div>
+              <div class="slide-card-content">
+                <h3 class="slide-card-title">Reanálisis Satelital ERA5 &amp; NOAA</h3>
+                <p class="slide-card-desc">
+                  45 años de historia meteorológica continua combinada con índices oceánicos MEI v2 y Niño 3.4 para anticipación de canículas.
+                </p>
+                <div class="slide-meta-row">
+                  <span class="slide-meta-tag">ERA5: 1981 - 2026</span>
+                  <span class="slide-meta-tag">Predicción ENSO</span>
+                </div>
+              </div>
+            </article>
+
+            [-- Slide 3: Precios Mayoristas MAGA & P&L --]
+            <article class="carousel-slide-card" data-index="2">
+              <div class="slide-photo-box">
+                <img src="img/sweet_corn_ears.jpg" alt="Mazorca en desarrollo con estigmas de floración en planta de maíz" class="slide-card-photo">
+                <span class="slide-badge-category">Finanzas &amp; Retorno</span>
+              </div>
+              <div class="slide-card-content">
+                <h3 class="slide-card-title">Precios Mayoristas MAGA &amp; P&amp;L</h3>
+                <p class="slide-card-desc">
+                  Cálculo de rentabilidad real con precios del SIMPA para Mercados de Oriente, punto de equilibrio y retorno sobre capital invertido.
+                </p>
+                <div class="slide-meta-row">
+                  <span class="slide-meta-tag">SIMPA: Q 220.00/qq</span>
+                  <span class="slide-meta-tag">Flujo P&amp;L Neto</span>
+                </div>
+              </div>
+            </article>
+
+            [-- Slide 4: Geometría Parcelar & Topografía --]
+            <article class="carousel-slide-card" data-index="3">
+              <div class="slide-photo-box">
+                <img src="img/guatemala_milpa_field.jpg" alt="Milpa y topografía de ladera en Guatemala" class="slide-card-photo">
+                <span class="slide-badge-category">Topografía &amp; Lotes</span>
+              </div>
+              <div class="slide-card-content">
+                <h3 class="slide-card-title">Geometría y Curvas de Nivel</h3>
+                <p class="slide-card-desc">
+                  Mapeo poligonal interactivo de parcelas irregulares de 3 y 4 lados con cálculo métrico en manzanas y compensación de pendiente.
+                </p>
+                <div class="slide-meta-row">
+                  <span class="slide-meta-tag">Polígonos 3-4 Lados</span>
+                  <span class="slide-meta-tag">Área en Manzanas</span>
+                </div>
+              </div>
+            </article>
+
+            [-- Slide 5: Manejo Fenológico R1 --]
+            <article class="carousel-slide-card" data-index="4">
+              <div class="slide-photo-box">
+                <img src="img/maize_cob_stalk.jpg" alt="Mazorcas maduras de maíz en planta listas para cosecha en parcela" class="slide-card-photo">
+                <span class="slide-badge-category">Manejo del Cultivo</span>
+              </div>
+              <div class="slide-card-content">
+                <h3 class="slide-card-title">Protección de Floración R1</h3>
+                <p class="slide-card-desc">
+                  Monitoreo de la ventana crítica de 60 días para asegurar satisfacción hídrica &ge; 90% (ETa/ETc) y consolidar 50.7 quintales por manzana.
+                </p>
+                <div class="slide-meta-row">
+                  <span class="slide-meta-tag">ETa/ETc &ge; 90%</span>
+                  <span class="slide-meta-tag">Meta: 50.7 qq/mz</span>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        [-- Indicadores de Paginación (Pill Dots Interactivos) --]
+        <div class="carousel-pagination" id="carouselPagination">
+          <button class="carousel-dot is-active" data-slide="0" aria-label="Ir a diapositiva 1"></button>
+          <button class="carousel-dot" data-slide="1" aria-label="Ir a diapositiva 2"></button>
+          <button class="carousel-dot" data-slide="2" aria-label="Ir a diapositiva 3"></button>
+          <button class="carousel-dot" data-slide="3" aria-label="Ir a diapositiva 4"></button>
+          <button class="carousel-dot" data-slide="4" aria-label="Ir a diapositiva 5"></button>
+        </div>
+      </div>
+    </section>
+    -->
+
+    <!-- SECCIÓN HITOS FENOLÓGICOS (KAAX TECHNOLOGIES 2871 MILESTONES TIMELINE) -->
+    <section class="milestones-section-kaax" id="hitos">
+      <div class="section-editorial-head reveal-on-scroll from-bottom">
+        <h2 class="section-title">Hitos Fenológicos y Ventana Crítica</h2>
+        <p class="section-sub-desc">Etapas bioclimáticas determinantes para el rendimiento del grano de maíz en el Corredor Seco.</p>
+      </div>
+
+      <div class="milestones-timeline-grid">
+        <!-- Hito 1: Días 01-10 -->
+        <article class="milestone-card reveal-on-scroll from-bottom delay-1">
+          <span class="milestone-step-index">01</span>
+          <div class="milestone-body">
+            <h3 class="milestone-title">Siembra y Emergencia</h3>
+            <p class="milestone-desc">Profundidad óptima de 3-5 cm. Germinación en suelo con retención hídrica a capacidad de campo (28.4%) y sin asfixia radicular.</p>
+          </div>
+        </article>
+
+        <!-- Hito 2: Días 11-35 -->
+        <article class="milestone-card reveal-on-scroll from-bottom delay-2">
+          <span class="milestone-step-index">02</span>
+          <div class="milestone-body">
+            <h3 class="milestone-title">Desarrollo Vegetativo</h3>
+            <p class="milestone-desc">Expansión de hojas verdaderas de V3 a V12. Crecimiento de raíces profundas y absorción gradual de fertilización nitrogenada.</p>
+          </div>
+        </article>
+
+        <!-- Hito 3: Días 36-60 (CRÍTICO) -->
+        <article class="milestone-card reveal-on-scroll from-bottom delay-3">
+          <span class="milestone-step-index">03</span>
+          <div class="milestone-body">
+            <h3 class="milestone-title">Floración R1 (Polinización)</h3>
+            <p class="milestone-desc">Etapa biológicamente vulnerable a canículas. Exige satisfacción hídrica &ge; 90% (ETa / ETc) para evitar el aborto de grano.</p>
+          </div>
+        </article>
+
+        <!-- Hito 4: Días 61-120 -->
+        <article class="milestone-card reveal-on-scroll from-bottom delay-4">
+          <span class="milestone-step-index">04</span>
+          <div class="milestone-body">
+            <h3 class="milestone-title">Llenado y Madurez</h3>
+            <p class="milestone-desc">Translocación de carbohidratos al grano, secado natural de mazorca en pie y consolidación de 50.7 quintales por manzana proyectados.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- SECCIÓN SOBRE NOSOTROS • ESTILO WIX KAAX TECHNOLOGIES -->
+    <section class="about-section-wix" id="nosotros">
+      <div class="about-editorial-grid">
+        <!-- Columna de Texto -->
+        <div class="about-text-col reveal-on-scroll from-left">
+          <h2 class="about-lead-title">
+            Con Nosotros la Cosecha es Más Segura
+          </h2>
+          <p class="about-paragraph">
+            AGRO-JUTIAPA es un sistema técnico de alta precisión desarrollado específicamente para productores de maíz en el departamento de Jutiapa. Integramos 45 años de reanálisis meteorológico satelital ERA5, física de suelos Saxton &amp; Rawls y precios oficiales de mercados mayoristas para minimizar el riesgo agroclimático antes de depositar la primera semilla.
+          </p>
+          <p class="about-paragraph">
+            En el Corredor Seco, sembrar en la fecha equivocada o sin conocer la capacidad de retención hídrica del predio puede comprometer toda la inversión. Nuestra plataforma evalúa la probabilidad de éxito en la ventana fenológica crítica de 60 días para que usted tome decisiones con respaldo científico comprobado.
+          </p>
+          <div class="about-checklist">
+            <div class="about-check-item">
+              <svg class="about-check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Modelado de balance hídrico diario continuo ERA5 (1981-2026).</span>
+            </div>
+            <div class="about-check-item">
+              <svg class="about-check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Física de suelo Franco-Arcillo-Arenoso calibrada para Jutiapa.</span>
+            </div>
+            <div class="about-check-item">
+              <svg class="about-check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Precios oficiales mayoristas MAGA SIMPA actualizados para Oriente.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Columna Fotográfica -->
+        <div class="about-photo-wrap reveal-on-scroll from-right">
+          <img src="img/guatemala_milpa_field.jpg" alt="Parcela de milpa y cultivo de maíz tradicional en laderas de Guatemala" class="about-photo">
+        </div>
+      </div>
+    </section>
+
+    <!-- SECCIÓN GALERÍA • NUESTRAS PARCELAS Y DESARROLLO DEL CULTIVO (ESTILO FOX LAWN CARE 50/50 SPLIT) -->
+    <section class="gallery-section-wix" id="galeria">
+      <div class="section-editorial-head reveal-on-scroll from-bottom">
+        <h2 class="section-title">Nuestras Parcelas y Desarrollo del Cultivo</h2>
+        <p class="section-sub-desc">Evolución biológica y seguimiento de las siembras de maíz en los suelos de Jutiapa.</p>
+      </div>
+
+      <div class="fox-split-showcase">
+        <!-- Bloque 1: Imagen a la Izquierda (50%) | Información a la Derecha (50%) -->
+        <article class="fox-split-block fox-split-left-media">
+          <div class="fox-split-media-col reveal-on-scroll from-left">
+            <img src="img/corn_ear_plant.jpg" alt="Plántulas y brotes de maíz emergiendo en surcos en tierra fértil" class="fox-split-photo">
+          </div>
+          <div class="fox-split-text-col card-color-unified reveal-on-scroll from-right">
+            <div class="fox-split-inner">
+              <h3 class="fox-split-title">Emergencia y Enraizamiento</h3>
+              <span class="fox-split-subtitle">Germinación y Desarrollo Radicular</span>
+              <p class="fox-split-desc">
+                Establecimiento radicular temprano en humedad a capacidad de campo (28.4%) sin anegamiento. Profundidad óptima de siembra calibrada de 3 a 5 cm para garantizar el vigor de las primeras plántulas en suelo franco-arcilloso.
+              </p>
+              <p class="fox-split-desc">
+                Esta etapa define la densidad de población final del lote. El monitoreo continuo de la temperatura y humedad en el estrato superficial (0-15 cm) previene pérdidas por desecación o ataque de patógenos del suelo.
+              </p>
+              <div class="fox-split-specs">
+                <span class="spec-pill">Profundidad: 3 - 5 cm</span>
+                <span class="spec-pill">Capacidad de campo: 28.4%</span>
+                <span class="spec-pill">Ventana: Días 01 a 10</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Bloque 2: Información a la Izquierda (50%) | Imagen a la Derecha (50%) -->
+        <article class="fox-split-block fox-split-right-media">
+          <div class="fox-split-text-col card-color-unified reveal-on-scroll from-left">
+            <div class="fox-split-inner">
+              <h3 class="fox-split-title">Surcos y Vigor Foliar</h3>
+              <span class="fox-split-subtitle">Desarrollo Vegetativo y Crecimiento</span>
+              <p class="fox-split-desc">
+                Líneas de siembra en expansión acelerada desde V6 hasta V12. Absorción óptima de nutrientes y desarrollo radicular en profundidad para tolerar canículas moderadas frecuentes en el Corredor Seco.
+              </p>
+              <p class="fox-split-desc">
+                Durante este período el área foliar se multiplica exponencialmente. La tasa de transpiración aumenta gradualmente exigiendo sincronización precisa con las precipitaciones para acumular biomasa sin estrés hídrico.
+              </p>
+              <div class="fox-split-specs">
+                <span class="spec-pill">Etapas: V6 &rarr; V12</span>
+                <span class="spec-pill">Crecimiento foliar activo</span>
+                <span class="spec-pill">Ventana: Días 11 a 35</span>
+              </div>
+            </div>
+          </div>
+          <div class="fox-split-media-col reveal-on-scroll from-right">
+            <img src="img/corn_crop_rows.jpg" alt="Surcos de maíz en crecimiento vegetativo vigoroso y formación de mazorca" class="fox-split-photo">
+          </div>
+        </article>
+
+        <!-- Bloque 3: Imagen a la Izquierda (50%) | Información a la Derecha (50%) (Mismo formato que la primera) -->
+        <article class="fox-split-block fox-split-left-media">
+          <div class="fox-split-media-col reveal-on-scroll from-left">
+            <img src="img/maize_cob_stalk.jpg" alt="Mazorcas maduras de maíz en planta listas para cosecha en parcela" class="fox-split-photo">
+          </div>
+          <div class="fox-split-text-col card-color-unified reveal-on-scroll from-right">
+            <div class="fox-split-inner">
+              <h3 class="fox-split-title">Cosecha y Grano Lleno</h3>
+              <span class="fox-split-subtitle">Llenado de Mazorca y Madurez Fisiológica</span>
+              <p class="fox-split-desc">
+                Mazorcas uniformes y sanas alcanzando el rendimiento proyectado de 50.7 quintales por manzana. Grano lleno con secado natural en pie para maximizar la calidad comercial en los mercados mayoristas de Oriente.
+              </p>
+              <p class="fox-split-desc">
+                La consolidación del grano refleja la superación de la ventana crítica de floración (R1) con satisfacción hídrica &ge; 90%, garantizando el retorno sobre el capital invertido del productor.
+              </p>
+              <div class="fox-split-specs">
+                <span class="spec-pill">Rendimiento: 50.7 qq/mz</span>
+                <span class="spec-pill">Precio MAGA: Q 220.00</span>
+                <span class="spec-pill">Ventana: Días 61 a 120</span>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- WORKSPACE: FORMULARIO EN 2 PANELES DESPEJADOS (ENTRAN DESDE IZQUIERDA Y DERECHA) -->
+    <main id="workspace">
+      <div class="section-editorial-head reveal-on-scroll from-bottom" style="margin-bottom: 28px;">
+        <h2 class="section-title">Configuración y Evaluación Agronómica</h2>
+      </div>
+      <form id="agriForm" class="workspace-form-grid">
+        
+        <!-- PANEL 1: GEOMETRÍA DEL TERRENO (ENTRA DESDE LA IZQUIERDA) -->
+        <div class="workspace-panel reveal-on-scroll from-left">
+          <div class="panel-header-row">
+            <div class="panel-title-text">
+              <h2>1. Geometría y Linderos de la Parcela</h2>
+              <p>Admite 4 lados desiguales, triángulos y rectángulos</p>
+            </div>
+          </div>
+
+          <!-- Selector de Forma -->
+          <div class="form-unit">
+            <label class="form-label-title">Forma Geométrica del Terreno</label>
+            <div class="shape-buttons-grid" id="shapeSelectorPills">
+              <button type="button" class="shape-btn active" data-shape="cuadrilatero">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 6 21 3 19 20 5 18"/></svg>
+                <span>4 Lados</span>
+              </button>
+              <button type="button" class="shape-btn" data-shape="triangulo">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 3 2 21 22 21"/></svg>
+                <span>Triángulo</span>
+              </button>
+              <button type="button" class="shape-btn" data-shape="rectangulo">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/></svg>
+                <span>Rectángulo</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Atajos Rápidos -->
+          <div class="quick-chips-row">
+            <span class="quick-label">Atajos:</span>
+            <button type="button" class="preset-chip" id="presetManzana">1 Manzana (84×84m)</button>
+            <button type="button" class="preset-chip" id="presetCuerda">1 Cuerda (20×20m)</button>
+            <button type="button" class="preset-chip" id="presetIrregular">Lote Irregular</button>
+          </div>
+
+          <!-- Campos: Cuadrilátero Irregular -->
+          <div id="fieldsCuadrilatero">
+            <div class="inputs-grid-2x2">
+              <div class="input-cell">
+                <label for="side1" class="field-label-tag">
+                  <span class="compass-chip">N</span>
+                  <span>Lado Norte</span>
+                </label>
+                <div class="unit-field-wrapper">
+                  <input type="number" step="0.5" min="1" id="side1" class="text-input-field side-input" value="100" required>
+                  <span class="unit-badge-text">m</span>
+                </div>
+              </div>
+              <div class="input-cell">
+                <label for="side2" class="field-label-tag">
+                  <span class="compass-chip">E</span>
+                  <span>Lado Este</span>
+                </label>
+                <div class="unit-field-wrapper">
+                  <input type="number" step="0.5" min="1" id="side2" class="text-input-field side-input" value="70" required>
+                  <span class="unit-badge-text">m</span>
+                </div>
+              </div>
+              <div class="input-cell">
+                <label for="side3" class="field-label-tag">
+                  <span class="compass-chip">S</span>
+                  <span>Lado Sur</span>
+                </label>
+                <div class="unit-field-wrapper">
+                  <input type="number" step="0.5" min="1" id="side3" class="text-input-field side-input" value="90" required>
+                  <span class="unit-badge-text">m</span>
+                </div>
+              </div>
+              <div class="input-cell">
+                <label for="side4" class="field-label-tag">
+                  <span class="compass-chip">O</span>
+                  <span>Lado Oeste</span>
+                </label>
+                <div class="unit-field-wrapper">
+                  <input type="number" step="0.5" min="1" id="side4" class="text-input-field side-input" value="65" required>
+                  <span class="unit-badge-text">m</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Campos: Triángulo -->
+          <div id="fieldsTriangulo" style="display: none;">
+            <div class="inputs-grid-3">
+              <div class="input-cell">
+                <label for="sideA" class="field-label-tag">
+                  <span class="compass-chip">A</span>
+                  <span>Lindero A</span>
+                </label>
+                <div class="unit-field-wrapper">
+                  <input type="number" step="0.5" min="1" id="sideA" class="text-input-field side-input" value="80">
+                  <span class="unit-badge-text">m</span>
+                </div>
+              </div>
+              <div class="input-cell">
+                <label for="sideB" class="field-label-tag">
+                  <span class="compass-chip">B</span>
+                  <span>Lindero B</span>
+                </label>
+                <div class="unit-field-wrapper">
+                  <input type="number" step="0.5" min="1" id="sideB" class="text-input-field side-input" value="75">
+                  <span class="unit-badge-text">m</span>
+                </div>
+              </div>
+              <div class="input-cell">
+                <label for="sideC" class="field-label-tag">
+                  <span class="compass-chip">C</span>
+                  <span>Lindero C</span>
+                </label>
+                <div class="unit-field-wrapper">
+                  <input type="number" step="0.5" min="1" id="sideC" class="text-input-field side-input" value="90">
+                  <span class="unit-badge-text">m</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Campos: Rectángulo -->
+          <div id="fieldsRectangulo" style="display: none;">
+            <div class="inputs-grid-2">
+              <div class="input-cell">
+                <label for="terrainWidth" class="field-label-tag">Ancho</label>
+                <div class="unit-field-wrapper">
+                  <input type="number" step="1" min="1" id="terrainWidth" class="text-input-field side-input" value="100">
+                  <span class="unit-badge-text">m</span>
+                </div>
+              </div>
+              <div class="input-cell">
+                <label for="terrainLength" class="field-label-tag">Largo</label>
+                <div class="unit-field-wrapper">
+                  <input type="number" step="1" min="1" id="terrainLength" class="text-input-field side-input" value="70">
+                  <span class="unit-badge-text">m</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Barra de Superficie en Tiempo Real -->
+          <div class="live-terrain-bar">
+            <div class="live-terrain-col">
+              <span class="live-terrain-label">Superficie Total</span>
+              <strong id="statAreaM2" class="live-terrain-value">6,412 m²</strong>
+            </div>
+            <div class="live-terrain-sep"></div>
+            <div class="live-terrain-col">
+              <span class="live-terrain-label">Manzanas</span>
+              <strong id="statManzanas" class="live-terrain-value accent">0.92 mz</strong>
+            </div>
+            <div class="live-terrain-sep"></div>
+            <div class="live-terrain-col">
+              <span class="live-terrain-label">Perímetro</span>
+              <strong id="statPerimeter" class="live-terrain-value">325 m</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL 2: FECHA, CAPITAL Y UBICACIÓN (ENTRA DESDE LA DERECHA) -->
+        <div class="workspace-panel reveal-on-scroll from-right delay-1">
+          <div class="panel-header-row">
+            <div class="panel-title-text">
+              <h2>2. Fecha de Siembra y Capital Invertido</h2>
+              <p>Cálculo sobre el aporte real del productor</p>
+            </div>
+          </div>
+
+          <!-- Fecha de Siembra -->
+          <div class="form-unit">
+            <div class="flex-label-row">
+              <label for="sowingDate" class="form-label-title" style="margin-bottom: 0;">Fecha Tentativa de Siembra</label>
+              <span id="seasonBadge" class="season-tag primera">Época de Primera</span>
+            </div>
+            <input type="date" id="sowingDate" class="text-input-field" value="2026-06-01" required style="margin-top: 6px;">
+          </div>
+
+          <!-- Capital y Variedad -->
+          <div class="inputs-grid-2">
+            <div class="input-cell">
+              <label for="capital" class="field-label-tag">Capital Propio (Q)</label>
+              <div class="unit-field-wrapper">
+                <span class="currency-badge">Q</span>
+                <input type="number" step="100" min="100" id="capital" class="text-input-field text-input-currency" value="7200" required>
+              </div>
+              <div class="capital-chips-strip">
+                <button type="button" class="capital-chip" data-val="5000">5k</button>
+                <button type="button" class="capital-chip active" data-val="7200">7.2k</button>
+                <button type="button" class="capital-chip" data-val="10000">10k</button>
+                <button type="button" class="capital-chip" data-val="15000">15k</button>
+              </div>
+            </div>
+
+            <div class="input-cell">
+              <label for="cornType" class="field-label-tag">Variedad de Maíz</label>
+              <select id="cornType" class="select-input-clean">
+                <option value="blanco">Maíz Blanco (Comercial)</option>
+                <option value="amarillo">Maíz Amarillo</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Micro-región -->
+          <div class="form-unit" style="margin-top: 14px;">
+            <label class="field-label-tag">Micro-región en Jutiapa</label>
+            <div class="location-chips-strip" id="locationChips">
+              <button type="button" class="loc-chip active" data-lat="14.2670" data-lon="-90.1330">Calderas</button>
+              <button type="button" class="loc-chip" data-lat="14.2833" data-lon="-89.8667">Jutiapa Centro</button>
+              <button type="button" class="loc-chip" data-lat="14.3333" data-lon="-89.5667">Asunción Mita</button>
+              <button type="button" class="loc-chip" data-lat="14.5333" data-lon="-89.6500">Agua Blanca</button>
+            </div>
+            <input type="hidden" id="lat" value="14.2670">
+            <input type="hidden" id="lon" value="-90.1330">
+          </div>
+
+          <!-- Botón de Cálculo Principal -->
+          <button type="submit" id="btnSubmit" class="btn-calculate-luxury">
+            <span class="btn-calc-label">Calcular</span>
+            <svg class="btn-calc-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </button>
+        </div>
+
+      </form>
+
+      <!-- BARRA DE PROGRESO DE CÁLCULO -->
+      <div id="progressCard" class="progress-card-clean" style="display: none;">
+        <div class="progress-header">
+          <div class="spinner-ring-clean"></div>
+          <div>
+            <strong id="progressMessage" class="progress-title-text">Consultando reanálisis ERA5 y NOAA PSL...</strong>
+            <div class="progress-subtext">Modelos: Open-Meteo Archive • NOAA PSL • Saxton & Rawls • XGBoost</div>
+          </div>
+        </div>
+        <div class="progress-steps-grid">
+          <div class="step-chip active" id="step1">
+            <span class="step-num-pill">1</span>
+            <span>Clima ERA5</span>
+          </div>
+          <div class="step-chip" id="step2">
+            <span class="step-num-pill">2</span>
+            <span>Índices ENSO</span>
+          </div>
+          <div class="step-chip" id="step3">
+            <span class="step-num-pill">3</span>
+            <span>Suelo Saxton</span>
+          </div>
+          <div class="step-chip" id="step4">
+            <span class="step-num-pill">4</span>
+            <span>Inferencia ML</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- COCKPIT DE RESULTADOS: LLEGA CON ANIMACIÓN ESCALADA Y DESDE DIFERENTES DIRECCIONES -->
+      <div id="resultsSection" class="results-container" style="display: none;">
+        
+        <!-- HERO BANNER: EL SEMÁFORO AGRONÓMICO (LLEGA ESCALADO) -->
+        <div class="semaforo-banner amarillo reveal-on-scroll from-scale" id="semaforoCard">
+          
+          <div class="semaforo-flex-row">
+            <div class="semaforo-left-block">
+              <div class="beacon-circle-box" id="trafficLightBadge">
+                <span class="beacon-core"></span>
+              </div>
+              <div class="semaforo-title-meta">
+                <span class="semaforo-overline">Dictamen Agrometeorológico Oficial</span>
+                <h3 id="verdictTitle" class="semaforo-heading">CONDICIONADO / ALERTA (63.3%)</h3>
+                <div class="semaforo-badges-row">
+                  <span id="verdictProb" class="prob-badge-pill">63.3% Probabilidad Calibrada</span>
+                  <span id="verdictEnso" class="enso-badge-pill">Condición ENSO: Neutral</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Directiva Operativa de Manejo -->
+            <div class="directive-card-white">
+              <span class="directive-title">Directiva Operativa de Campo</span>
+              <p id="verdictAction" class="directive-body">
+                Riesgo hídrico moderado: emplear variedades precoces o tolerantes a sequía, labranza de conservación y monitoreo de humedad.
+              </p>
+            </div>
+          </div>
+
+          <!-- Parámetros Científicos -->
+          <div class="criteria-bottom-strip">
+            <div class="criteria-cell">
+              <span>Demanda Mínima (ETA_ETC_MIN):</span>
+              <strong>&ge; 0.90 (90%)</strong>
+            </div>
+            <div class="criteria-cell">
+              <span>Tolerancia Anegamiento:</span>
+              <strong>&le; 8 días</strong>
+            </div>
+            <div class="criteria-cell">
+              <span>Ventana Crítica:</span>
+              <strong>60 días (Kc 0.30 &rarr; 1.15)</strong>
+            </div>
+            <div class="criteria-cell">
+              <span>Calibración Semáforo:</span>
+              <strong>&ge; 70% Óptimo • 40%–69% Alerta • &lt; 40% No Sembrar</strong>
+            </div>
+          </div>
+
+          <!-- Validación Histórica Ex-Post -->
+          <div id="historicalValidationBox" class="historical-validation-box" style="display: none;">
+            <div class="hist-top-line">
+              <strong>Validación Histórica Ex-Post (60 Días Registrados en ERA5)</strong>
+              <span id="histValBadge" class="hist-badge-tag">FRACASO HISTÓRICO</span>
+            </div>
+            <div id="histValStats" class="hist-stat-detail"></div>
+            <p id="histValNote" class="hist-stat-detail" style="margin-top: 6px;"></p>
+          </div>
+        </div>
+
+        <!-- BENTO FILA 1: PLANO TOPOGRÁFICO (DESDE LA IZQUIERDA) + DENSIDAD (DESDE LA DERECHA) -->
+        <div class="bento-row-clean">
+          
+          <!-- PLANO GEOMÉTRICO A ESCALA (ENTRA DESDE LA IZQUIERDA) -->
+          <div class="bento-card-clean reveal-on-scroll from-left delay-1">
+            <div class="bento-header-clean">
+              <div class="box-title-group">
+                <!-- SVG Bonito: Escuadra y compás -->
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 6 21 3 19 20 5 18"/></svg>
+                <h3 class="box-title-clean">Plano Geométrico a Escala</h3>
+              </div>
+              <span class="box-badge-clean">Proporcional</span>
+            </div>
+
+            <div class="canvas-holder">
+              <canvas id="terrainCanvas"></canvas>
+            </div>
+
+            <div class="canvas-footer-stats">
+              <span id="valSpacing">85 cm entre surcos • 27 cm entre posturas</span>
+              <strong id="valTotalPlants">30,800 plantas totales</strong>
+            </div>
+          </div>
+
+          <!-- DENSIDAD DE SIEMBRA (ENTRA DESDE LA DERECHA) -->
+          <div class="bento-card-clean reveal-on-scroll from-right delay-2">
+            <div class="bento-header-clean">
+              <div class="box-title-group">
+                <!-- SVG Bonito: Espiga / Semilla -->
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <h3 class="box-title-clean">Recomendación de Densidad</h3>
+              </div>
+              <span class="box-badge-clean">Agronomía</span>
+            </div>
+
+            <div class="density-tiles-grid">
+              <div class="density-tile-clean">
+                <span class="density-tile-label">Densidad Óptima</span>
+                <strong id="valDensityM2" class="density-tile-number">4.4 pl/m²</strong>
+                <span id="valDensityMz" class="density-tile-sub">30,800 pl/manzana</span>
+              </div>
+              <div class="density-tile-clean">
+                <span class="density-tile-label">Semilla Requerida</span>
+                <strong id="valTotalSeeds" class="density-tile-number">38,043 sem.</strong>
+                <span id="valSeedBags" class="density-tile-sub">0.63 bolsas (~27.2 lbs)</span>
+              </div>
+            </div>
+
+            <div class="density-advice-note">
+              <span id="valDensityCriteria">Densidad calculada adaptada al régimen hídrico de la siembra.</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- BENTO FILA 2: GRÁFICA DE LLUVIAS (ENTRA DESDE ABAJO) -->
+        <div class="chart-box-clean reveal-on-scroll from-bottom delay-1">
+          <div class="bento-header-clean">
+            <div class="box-title-group">
+              <!-- SVG Bonito: Gota de lluvia -->
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+              <h3 class="box-title-clean">Comportamiento de Lluvias y Demanda Hídrica (60 Días)</h3>
+            </div>
+            <span class="box-badge-clean">Lluvia vs. ETc FAO-56</span>
+          </div>
+
+          <div class="water-chart-wrap">
+            <canvas id="waterChart"></canvas>
+          </div>
+        </div>
+
+        <!-- BENTO FILA 3: PROYECCIÓN FINANCIERA MAGA (ENTRA DESDE ABAJO) -->
+        <div class="finance-box-clean reveal-on-scroll from-bottom delay-2">
+          <div class="bento-header-clean">
+            <div class="box-title-group">
+              <!-- SVG Bonito: Monedas / Finanzas -->
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              <h3 class="box-title-clean">Proyección Financiera y Estado de Pérdidas y Ganancias (P&L)</h3>
+            </div>
+            <span class="box-badge-clean">Precios Oficiales MAGA</span>
+          </div>
+
+          <!-- Banner Oficial MAGA -->
+          <div class="maga-ribbon-clean">
+            <div class="maga-left">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span>Mercados Mayoristas de Oriente (MAGA - DIPLAN / SIMPA)</span>
+            </div>
+            <div class="maga-price-pill">
+              Actualizado: <strong id="magaDateBadge">2026-09-15</strong> • <strong id="magaPriceBadge">Q 220.00/qq</strong>
+            </div>
+          </div>
+
+          <!-- 4 KPIs Financieros -->
+          <div class="kpis-clean-grid">
+            <div class="kpi-tile-clean">
+              <span class="kpi-name">Inversión Aportada</span>
+              <strong class="kpi-amount" id="kpiCost">Q 7,200.00</strong>
+              <span class="kpi-sub-text">Capital directo del productor</span>
+            </div>
+            <div class="kpi-tile-clean">
+              <span class="kpi-name">Rendimiento Estimado</span>
+              <strong class="kpi-amount" id="kpiYield">50.7 qq/mz</strong>
+              <span class="kpi-sub-text">Ajustado por estrés hídrico</span>
+            </div>
+            <div class="kpi-tile-clean">
+              <span class="kpi-name">Ingreso Bruto Proyectado</span>
+              <strong class="kpi-amount" id="kpiRevenue">Q 11,147.68</strong>
+              <span class="kpi-sub-text">Venta a precio oficial MAGA</span>
+            </div>
+            <div class="kpi-tile-clean highlight-green">
+              <span class="kpi-name">Utilidad Neta Proyectada</span>
+              <strong class="kpi-amount" id="kpiNetProfit">Q 3,947.68</strong>
+              <span class="kpi-sub-text" id="kpiRoiSub">ROI Proyectado: +54.8%</span>
+            </div>
+          </div>
+
+          <!-- Tabla P&L -->
+          <div class="table-wrap-clean">
+            <table class="clean-data-table">
+              <thead>
+                <tr>
+                  <th>Concepto / Flujo Financiero</th>
+                  <th>Base de Cálculo / Detalle</th>
+                  <th style="text-align: right;">Monto (Quetzales - Q)</th>
+                </tr>
+              </thead>
+              <tbody id="pnlTableBody"></tbody>
+            </table>
+          </div>
+
+          <!-- Análisis de Sensibilidad -->
+          <div class="table-wrap-clean">
+            <table class="clean-data-table">
+              <thead>
+                <tr>
+                  <th>Escenario</th>
+                  <th style="text-align: center;">Rendimiento (qq/mz)</th>
+                  <th style="text-align: center;">Producción (qq)</th>
+                  <th style="text-align: right;">Ingreso Bruto (Q)</th>
+                  <th style="text-align: right;">Utilidad Neta (Q)</th>
+                  <th style="text-align: right;">ROI (%)</th>
+                </tr>
+              </thead>
+              <tbody id="sensitivityTableBody"></tbody>
+            </table>
+          </div>
+
+        </div>
+
+        <!-- BARRA FLOTANTE DE EXPORTACIÓN PDF (ENTRA DESDE ABAJO) -->
+        <div class="pdf-export-strip reveal-on-scroll from-bottom">
+          <div class="pdf-info-group">
+            <div class="pdf-icon-box">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            </div>
+            <div>
+              <h4 class="pdf-title">Exportar Dictamen Técnico Completo (PDF)</h4>
+              <p class="pdf-desc">Informe técnico con balance hídrico, estado P&L y plano a escala para decisiones y crédito agrícola.</p>
+            </div>
+          </div>
+          <a href="#" id="btnDownloadPdf" class="btn-pdf-download" target="_blank">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Descargar Informe PDF</span>
+          </a>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- PREGUNTAS FRECUENTES (DESPEJADO, ESTILO APPLE) -->
+    <section class="faq-section-clean" id="faq">
+      <div class="section-editorial-head reveal-on-scroll from-bottom">
+        <h2 class="section-title">Preguntas Frecuentes del Sistema</h2>
+      </div>
+
+      <div class="faq-list">
+        <div class="faq-item active reveal-on-scroll from-bottom delay-1">
+          <div class="faq-question">
+            <h3>¿Cómo se calcula la humedad del suelo y la demanda del maíz?</h3>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-answer">
+            Utilizamos ecuaciones de Saxton & Rawls (2006) calibradas para suelo de Jutiapa (26% Arcilla, 52% Arena, 1.8% Materia Orgánica) junto con metodología FAO-56 ($ET_c = K_c \times ET_0$).
+          </div>
+        </div>
+
+        <div class="faq-item reveal-on-scroll from-bottom delay-2">
+          <div class="faq-question">
+            <h3>¿De dónde se obtienen los datos meteorológicos en tiempo real?</h3>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-answer">
+            Los datos diarios se descargan directamente desde el archivo ERA5 de Open-Meteo, proporcionando reanálisis de alta resolución desde 1981 hasta la actualidad para las coordenadas exactas de su predio.
+          </div>
+        </div>
+
+        <div class="faq-item reveal-on-scroll from-bottom delay-3">
+          <div class="faq-question">
+            <h3>¿Cómo influyen los índices oceánicos ENSO en la probabilidad?</h3>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-answer">
+            Consultamos los índices MEI v2 y Niño 3.4 desde NOAA PSL. En el Corredor Seco, El Niño incrementa el riesgo de canículas, ajustando el semáforo para recomendar variedades precoces y labranza de conservación.
+          </div>
+        </div>
+
+        <div class="faq-item reveal-on-scroll from-bottom delay-4">
+          <div class="faq-question">
+            <h3>¿Cómo se integran los precios del MAGA?</h3>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-answer">
+            Se toma el capital real que usted ingresa y se evalúa contra las cotizaciones de venta al productor de Mercados Mayoristas de Oriente del MAGA (DIPLAN / SIMPA), calculando punto de equilibrio exacto.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PIE DE PÁGINA PROFESIONAL (KAAX TECHNOLOGIES 2871 DARK TECH FOOTER) -->
+    <footer class="footer-clean">
+      <div class="footer-top-grid">
+        <div class="footer-col-brand">
+          <div class="brand-wrapper">
+            <div class="brand-emblem">AG</div>
+            <div class="brand-text-block">
+              <div class="brand-title-row">
+                <span class="brand-title footer-brand-title">AGRO-JUTIAPA</span>
+                <span class="brand-tech-badge">TECHNOLOGIES</span>
+              </div>
+              <span class="brand-sub footer-brand-sub">Inteligencia Agrometeorológica y Siembra</span>
+            </div>
+          </div>
+          <p class="footer-tagline">
+            Plataforma de alta resolución agrometeorológica, física de suelos y economía agropecuaria para decisiones de siembra seguras en Jutiapa, Guatemala.
+          </p>
+        </div>
+
+        <div class="footer-col-links">
+          <h5 class="footer-col-title">Navegación</h5>
+          <a href="#hitos" class="footer-nav-link">Hitos Fenológicos</a>
+          <a href="#nosotros" class="footer-nav-link">Soluciones de Campo</a>
+          <a href="#galeria" class="footer-nav-link">Parcelas y Cultivo</a>
+          <a href="#workspace" class="footer-nav-link">Calculadora</a>
+          <a href="#faq" class="footer-nav-link">Preguntas Frecuentes</a>
+        </div>
+
+        <div class="footer-col-info">
+          <h5 class="footer-col-title">Contacto y Ubicación</h5>
+          <p class="footer-info-line">Calderas, San José Acatempa</p>
+          <p class="footer-info-line">Jutiapa, Guatemala</p>
+          <p class="footer-info-line">info@agro-jutiapa.gt</p>
+          <p class="footer-info-line"><span class="badge-free">Acceso Público Libre y Gratuito</span></p>
+        </div>
+      </div>
+
+      <div class="footer-bottom-line">
+        <p class="footer-text-muted">
+          &copy; 2026 AGRO-JUTIAPA TECHNOLOGIES • Sistema de Inteligencia Agrometeorológica y Viabilidad Agrícola • Calderas, San José Acatempa, Jutiapa.
+        </p>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Scripts Modulares -->
+  <script src="js/terrain.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>

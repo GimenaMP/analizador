@@ -1,8 +1,8 @@
 """
 Módulo de Exportación de Informes en Formato PDF (RF-08, RNF-04).
-Genera un informe ejecutivo integral y profesional con márgenes estándar,
-tablas de pérdidas y ganancias, gráficos de soporte y recomendaciones técnicas.
-Cumple con la evaluación de inversión directa del productor y terrenos irregulares.
+Genera un informe ejecutivo integral y profesional con tipografía balanceada,
+tablas de pérdidas y ganancias, gráficos a escala calibrados y directivas agronómicas precisas.
+Diseñado para lectura clara de productores agrícolas e instituciones financieras.
 """
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -11,15 +11,41 @@ import datetime
 from config.settings import PATH_CONFIG
 
 
+def _clean_str(text: Any) -> str:
+    """Sanitiza cadenas asegurando compatibilidad completa con el encoding de fuentes core de FPDF."""
+    if text is None:
+        return ""
+    s = str(text)
+    replacements = {
+        "\u2022": " - ", # bullet
+        "\u2013": "-",   # en dash
+        "\u2014": "-",   # em dash
+        "\u2018": "'",
+        "\u2019": "'",
+        "\u201c": '"',
+        "\u201d": '"',
+        "\u2265": ">=",
+        "\u2264": "<=",
+        "\u2192": "->",
+        "\u2190": "<-",
+        "•": " - ",
+        "–": "-",
+        "—": "-",
+    }
+    for k, v in replacements.items():
+        s = s.replace(k, v)
+    return s.encode("latin-1", errors="replace").decode("latin-1")
+
+
 def export_pdf_report(
     report_data: Dict[str, Any],
     chart_paths: Optional[Dict[str, Path]] = None,
     output_path: Optional[Path] = None
 ) -> Path:
     """
-    Genera el informe final en formato PDF (RF-08).
-    Si fpdf2 está disponible lo compila a PDF vectorial estructurado;
-    adicionalmente siempre genera una versión Markdown de alta fidelidad.
+    Genera el informe final en formato PDF con diseño ejecutivo de alta calidad.
+    Si fpdf2 está disponible compila el PDF estructurado; adicionalmente genera
+    una versión Markdown de alta fidelidad como respaldo.
     """
     out_dir = PATH_CONFIG.output_dir
     pdf_file = output_path or (out_dir / "Informe_Viabilidad_Maiz_Jutiapa.pdf")
@@ -30,201 +56,387 @@ def export_pdf_report(
     with open(md_file, "w", encoding="utf-8") as f:
         f.write(md_content)
 
-    # 2. Compilar a PDF mediante fpdf2 si la librería está disponible
+    # 2. Compilar a PDF mediante fpdf2
     try:
         from fpdf import FPDF
 
         class AgriculturalReportPDF(FPDF):
+            def cell(self, *args, **kwargs):
+                if len(args) >= 3 and isinstance(args[2], str):
+                    args = list(args)
+                    args[2] = _clean_str(args[2])
+                elif "text" in kwargs and isinstance(kwargs["text"], str):
+                    kwargs["text"] = _clean_str(kwargs["text"])
+                elif "txt" in kwargs and isinstance(kwargs["txt"], str):
+                    kwargs["txt"] = _clean_str(kwargs["txt"])
+                return super().cell(*args, **kwargs)
+
+            def multi_cell(self, *args, **kwargs):
+                if len(args) >= 3 and isinstance(args[2], str):
+                    args = list(args)
+                    args[2] = _clean_str(args[2])
+                elif "text" in kwargs and isinstance(kwargs["text"], str):
+                    kwargs["text"] = _clean_str(kwargs["text"])
+                elif "txt" in kwargs and isinstance(kwargs["txt"], str):
+                    kwargs["txt"] = _clean_str(kwargs["txt"])
+                return super().multi_cell(*args, **kwargs)
+
             def header(self):
-                self.set_font("Helvetica", "B", 13)
-                self.set_text_color(22, 101, 52) # Verde bosque
-                self.cell(0, 7, "SISTEMA ABIERTO DE VIABILIDAD AGRÍCOLA - JUTIAPA", ln=True, align="C")
-                self.set_font("Helvetica", "I", 8.5)
-                self.set_text_color(100, 100, 100)
-                self.cell(0, 5, "Dictamen Agrometeorológico, Modelado de Parcela y Proyección Financiera MAGA", ln=True, align="C")
-                self.line(15, 23, 195, 23)
-                self.ln(5)
+                # Barra superior elegante en tono verde bosque
+                self.set_fill_color(27, 77, 62)
+                self.rect(0, 0, 210, 4, "F")
+
+                self.set_y(9)
+                self.set_font("Helvetica", "B", 12)
+                self.set_text_color(27, 77, 62)
+                self.cell(0, 6, "SISTEMA DE VIABILIDAD AGRÍCOLA - JUTIAPA", ln=True, align="C")
+
+                self.set_font("Helvetica", "", 7.8)
+                self.set_text_color(100, 116, 139)
+                self.cell(0, 4.5, "Dictamen Técnico Agrometeorológico, Modelado de Parcela y Evaluación Financiera MAGA", ln=True, align="C")
+
+                self.set_draw_color(226, 232, 240)
+                self.set_line_width(0.4)
+                self.line(15, 21, 195, 21)
+                self.ln(3)
 
             def footer(self):
-                self.set_y(-15)
-                self.set_font("Helvetica", "I", 8)
-                self.set_text_color(130, 130, 130)
-                self.cell(0, 10, f"Página {self.page_no()} | Plataforma Abierta de Apoyo al Productor - Jutiapa", align="C")
+                self.set_y(-13)
+                self.set_draw_color(226, 232, 240)
+                self.set_line_width(0.3)
+                self.line(15, 284, 195, 284)
+
+                self.set_font("Helvetica", "", 7.5)
+                self.set_text_color(148, 163, 184)
+                self.cell(90, 8, "Plataforma Abierta de Apoyo Técnico al Productor Agrícola", align="L")
+                self.cell(90, 8, f"Página {self.page_no()} de 2", align="R")
 
         pdf = AgriculturalReportPDF(orientation="P", unit="mm", format="A4")
         pdf.set_margins(15, 15, 15)
-        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.set_auto_page_break(auto=False)
         pdf.add_page()
 
-        # 1. INFORMACIÓN GENERAL Y LOCALIZACIÓN
-        pdf.set_font("Helvetica", "B", 10.5)
-        pdf.set_text_color(0, 0, 0)
-        pdf.cell(0, 6, "1. INFORMACIÓN GENERAL Y LOCALIZACIÓN", ln=True)
-        pdf.set_font("Helvetica", "", 8.5)
-        pdf.cell(95, 5, f"Municipio: {report_data['municipio']}", ln=False)
-        pdf.cell(85, 5, f"Coordenadas: {report_data['lat']:.4f}, {report_data['lon']:.4f}", ln=True)
-        pdf.cell(95, 5, f"Fecha Tentativa de Siembra: {report_data['fecha_siembra']}", ln=False)
-        pdf.cell(85, 5, f"Fecha de Emisión: {datetime.date.today().strftime('%Y-%m-%d')}", ln=True)
-        pdf.ln(2)
+        # ---------------------------------------------------------
+        # SECCIÓN 1: RESUMEN DEL PREDIO Y LOCALIZACIÓN
+        # ---------------------------------------------------------
+        pdf.set_y(24)
+        pdf.set_font("Helvetica", "B", 9.5)
+        pdf.set_text_color(27, 77, 62)
+        pdf.cell(0, 5, "1. RESUMEN DEL PREDIO Y LOCALIZACIÓN", ln=True)
 
-        # 2. DICTAMEN AGROMETEOROLÓGICO Y FASE ENSO (RF-03)
-        pdf.set_font("Helvetica", "B", 10.5)
-        pdf.cell(0, 6, "2. DICTAMEN AGROMETEOROLÓGICO Y FASE ENSO (RF-03)", ln=True)
-        
+        # Caja contenida de datos de localización (2 filas de 2 columnas amplias)
+        pdf.set_fill_color(248, 250, 252)
+        pdf.set_draw_color(226, 232, 240)
+        pdf.set_line_width(0.3)
+        pdf.rect(15, 29, 180, 18, "DF")
+
+        # Fila 1: Municipio y Coordenadas
+        pdf.set_xy(18, 30.5)
+        pdf.set_font("Helvetica", "B", 7.6)
+        pdf.set_text_color(71, 85, 105)
+        pdf.cell(90, 3.8, "Municipio y Micro-región:", ln=False)
+        pdf.cell(84, 3.8, "Coordenadas Geográficas:", ln=True)
+
+        pdf.set_x(18)
+        pdf.set_font("Helvetica", "", 8.2)
+        pdf.set_text_color(15, 23, 42)
+        muni_raw = str(report_data.get("municipio", "Jutiapa")).replace("(", "").replace(")", "").strip()
+        pdf.cell(90, 4.2, muni_raw, ln=False)
+        pdf.cell(84, 4.2, f"{report_data['lat']:.4f}° N, {abs(report_data['lon']):.4f}° O", ln=True)
+
+        # Fila 2: Fecha de Siembra y Fecha de Emisión
+        pdf.set_xy(18, 38.5)
+        pdf.set_font("Helvetica", "B", 7.6)
+        pdf.set_text_color(71, 85, 105)
+        pdf.cell(90, 3.8, "Fecha Tentativa de Siembra:", ln=False)
+        pdf.cell(84, 3.8, "Fecha de Emisión del Informe:", ln=True)
+
+        pdf.set_x(18)
+        pdf.set_font("Helvetica", "", 8.2)
+        pdf.set_text_color(15, 23, 42)
+        pdf.cell(90, 4.2, str(report_data.get("fecha_siembra", "")), ln=False)
+        pdf.cell(84, 4.2, datetime.date.today().strftime("%Y-%m-%d"), ln=True)
+
+        # ---------------------------------------------------------
+        # SECCIÓN 2: DICTAMEN TÉCNICO Y SEMÁFORO DE VIABILIDAD
+        # ---------------------------------------------------------
+        pdf.set_y(50)
+        pdf.set_font("Helvetica", "B", 9.5)
+        pdf.set_text_color(27, 77, 62)
+        pdf.cell(0, 5, "2. DICTAMEN TÉCNICO Y VIABILIDAD CLIMÁTICA", ln=True)
+
         sem_color = report_data.get("semaforo_color", "Amarillo")
         if sem_color == "Verde":
-            pdf.set_fill_color(220, 252, 231)
-            pdf.set_text_color(22, 101, 52)
+            bg_col = (236, 253, 245)
+            border_col = (167, 243, 208)
+            text_col = (6, 95, 70)
         elif sem_color == "Amarillo":
-            pdf.set_fill_color(254, 243, 199)
-            pdf.set_text_color(180, 83, 9)
+            bg_col = (254, 252, 232)
+            border_col = (254, 240, 138)
+            text_col = (146, 64, 14)
         else:
-            pdf.set_fill_color(254, 226, 226)
-            pdf.set_text_color(185, 28, 28)
+            bg_col = (254, 242, 242)
+            border_col = (254, 202, 202)
+            text_col = (153, 27, 27)
 
-        pdf.set_font("Helvetica", "B", 9.5)
-        pdf.cell(60, 7.5, f" ESTADO: {report_data['semaforo_estado']}", border=1, fill=True)
-        pdf.cell(65, 7.5, f" Probabilidad: {report_data['probabilidad']*100:.1f}%", border=1, fill=True)
-        pdf.cell(55, 7.5, f" Fase ENSO: {report_data['fase_enso']}", border=1, fill=True, ln=True)
+        # Banner del Semáforo
+        pdf.set_y(56)
+        pdf.set_fill_color(*bg_col)
+        pdf.set_draw_color(*border_col)
+        pdf.set_line_width(0.4)
+        pdf.rect(15, 56, 180, 25, "DF")
 
-        pdf.set_text_color(0, 0, 0)
-        pdf.set_font("Helvetica", "", 8.5)
-        pdf.ln(1.5)
-        pdf.multi_cell(0, 4.2, f"Recomendación Operativa: {report_data['semaforo_accion']}")
-        pdf.ln(1.5)
+        # Fila de métricas del dictamen
+        pdf.set_xy(18, 57.5)
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_text_color(*text_col)
+        
+        raw_estado = str(report_data.get("semaforo_estado", "CONDICIONADO")).replace("/", " o ").replace("(", "").replace(")", "").strip()
+        pdf.cell(90, 5.5, f"ESTADO: {raw_estado}", ln=False)
 
-        # Criterios del algoritmo agrometeorológico (ETA_ETC_MIN = 0.90)
+        pdf.set_font("Helvetica", "B", 8.2)
+        prob_val = report_data.get("probabilidad", 0.5) * 100
+        pdf.cell(48, 5.5, f"Viabilidad: {prob_val:.1f}%", ln=False, align="C")
+
+        fase_raw = str(report_data.get("fase_enso", "Neutral")).replace("(", "").replace(")", "").strip()
+        pdf.cell(38, 5.5, f"ENSO: {fase_raw}", ln=True, align="R")
+
+        # Directiva de manejo agronómico
+        pdf.set_xy(18, 64)
+        pdf.set_font("Helvetica", "", 7.8)
+        pdf.set_text_color(30, 41, 59)
+        accion_limpia = str(report_data.get("semaforo_accion", "")).replace("(", "").replace(")", "").strip()
+        pdf.multi_cell(174, 3.8, accion_limpia)
+
+        # Criterios técnicos de cálculo
         crit = report_data.get("criterios_algoritmo", {})
         eta_min = crit.get("eta_etc_min", 0.90)
         wl_max = crit.get("waterlog_max_days", 8)
-        pdf.set_font("Helvetica", "I", 7.8)
-        pdf.set_text_color(60, 60, 60)
-        pdf.cell(0, 3.8, f"Criterios de Viabilidad: Demanda hídrica mínima ETa/ETc >= {eta_min:.2f} (90%) | Anegamiento <= {wl_max} días | Ventana: 60 días", ln=True)
+        pdf.set_xy(18, 73.5)
+        pdf.set_font("Helvetica", "I", 7.2)
+        pdf.set_text_color(100, 116, 139)
+        pdf.cell(174, 3.5, f"Criterios evaluados: Demanda hídrica mínima ETa vs ETc {eta_min*100:.0f}% - Límite de anegamiento {wl_max} días - Ventana fenológica 60 días", ln=True)
 
-        # Validación histórica ex-post si ya transcurrió la ventana de 60 días
-        ev_hist = report_data.get("evaluacion_historica", {})
-        if ev_hist.get("disponible"):
-            eta_obs = ev_hist.get("eta_etc_real")
-            wl_obs = ev_hist.get("dias_anegamiento_real")
-            res_obs = ev_hist.get("resultado_real")
-            motivo_obs = ev_hist.get("motivo_fallo")
-            pdf.ln(1)
-            pdf.set_font("Helvetica", "B", 8)
-            pdf.set_text_color(30, 41, 59)
-            pdf.cell(0, 4, f"Validación Histórica Ex-Post (a 60 días): ETa/ETc Observado = {eta_obs:.2f} | Anegamiento = {wl_obs} días -> {res_obs}", ln=True)
-            pdf.set_font("Helvetica", "", 7.5)
-            pdf.set_text_color(80, 80, 80)
-            pdf.multi_cell(0, 3.5, f"Diagnóstico: {motivo_obs}. El pronóstico evalúa condiciones antecedentes al día de siembra; ex-post, la lluvia acumulada determinó el resultado.")
+        # ---------------------------------------------------------
+        # SECCIÓN 3: GEOMETRÍA DE PARCELA Y DENSIDAD DE SIEMBRA
+        # ---------------------------------------------------------
+        pdf.set_y(84)
+        pdf.set_font("Helvetica", "B", 9.5)
+        pdf.set_text_color(27, 77, 62)
+        pdf.cell(0, 5, "3. PARCELA Y RECOMENDACIÓN DE DENSIDAD DE SIEMBRA", ln=True)
 
-        pdf.ln(2.5)
+        d = report_data.get("densidad", {})
+        t = report_data.get("terreno", {})
+        forma_desc = str(t.get("forma", "Parcela")).replace("(", "").replace(")", "").strip()
 
-        # 3. GEOMETRÍA DEL TERRENO Y DENSIDAD DE SIEMBRA (RF-05, RF-06)
-        pdf.set_font("Helvetica", "B", 10.5)
-        pdf.cell(0, 6, "3. PARCELA Y RECOMENDACIÓN DE DENSIDAD (RF-05, RF-06)", ln=True)
-        pdf.set_font("Helvetica", "", 8.5)
-        
-        d = report_data["densidad"]
-        t = report_data["terreno"]
-        forma_desc = t.get("forma", "Parcela")
-        pdf.cell(0, 4.8, f"Forma Geométrica del Terreno: {forma_desc}", ln=True)
-        pdf.cell(95, 4.8, f"Superficie: {t['area_m2']:,.1f} m² ({t['manzanas']:.3f} mz / {t['hectareas']:.3f} ha)", ln=False)
-        pdf.cell(85, 4.8, f"Perímetro Total: {t.get('perimetro_m', 0):,.1f} m", ln=True)
-        pdf.cell(95, 4.8, f"Densidad Óptima: {d['densidad_plantas_m2']} pl/m² ({d['densidad_plantas_mz']:,} pl/mz)", ln=False)
-        pdf.cell(85, 4.8, f"Población Total Estimada: {d['plantas_totales_predio']:,} plantas", ln=True)
-        pdf.cell(95, 4.8, f"Semilla Requerida: {d['semillas_totales_requeridas']:,} semillas ({d['libras_semilla']} lbs)", ln=False)
-        pdf.cell(85, 4.8, f"Distanciamiento: {d['distancia_surcos_cm']} cm surco | {d['distancia_posturas_cm']} cm postura", ln=True)
-        pdf.ln(2.5)
+        # 4 Cajas métricas alineadas (42.5mm de ancho cada una con 3.3mm de gap)
+        box_w = 42.5
+        box_h = 17
+        gap = 3.33
+        start_x = 15
+        box_y = 90
 
-        # 4. PROYECCIÓN FINANCIERA Y PÉRDIDAS & GANANCIAS (RF-07)
-        fin = report_data["financiero"]
-        pdf.set_font("Helvetica", "B", 10.5)
-        pdf.cell(0, 6, "4. PROYECCIÓN FINANCIERA Y ESTADO DE PÉRDIDAS Y GANANCIAS (RF-07)", ln=True)
-        pdf.set_font("Helvetica", "I", 8)
-        pdf.set_text_color(80, 80, 80)
-        pdf.cell(0, 4, f"Precios oficiales de referencia: {fin['fuente_oficial_maga']} | Actualizado al: {fin['fecha_actualizacion_maga']}", ln=True)
-        
-        pdf.ln(1.5)
-        pdf.set_text_color(0, 0, 0)
-        pdf.set_font("Helvetica", "B", 8.5)
-        pdf.set_fill_color(240, 240, 240)
-        pdf.cell(115, 5.5, "Indicador Financiero / Rubro Evaluado", border=1, fill=True)
-        pdf.cell(65, 5.5, "Valor Proyectado", border=1, fill=True, ln=True, align="R")
+        metric_cards = [
+            ("Superficie Total", f"{t.get('area_m2', 0):,.0f} m²", f"{t.get('manzanas', 0):.2f} mz - {t.get('hectareas', 0):.2f} ha"),
+            ("Densidad Óptima", f"{d.get('densidad_plantas_m2', 0)} plantas m²", f"{d.get('densidad_plantas_mz', 0):,} plantas mz"),
+            ("Semilla Requerida", f"{d.get('semillas_totales_requeridas', 0):,} semillas", f"{d.get('libras_semilla', 0)} libras semilla"),
+            ("Distanciamiento", f"{d.get('distancia_surcos_cm', 0)} cm surco", f"{d.get('distancia_posturas_cm', 0)} cm postura")
+        ]
 
-        pdf.set_font("Helvetica", "", 8.5)
-        pdf.cell(115, 5, "  Capital de Inversión Aportado por el Productor", border=1)
-        pdf.cell(65, 5, f"Q {fin['capital_inversion_q']:,.2f}", border=1, ln=True, align="R")
+        for idx, (label, val_top, val_sub) in enumerate(metric_cards):
+            curr_x = start_x + idx * (box_w + gap)
+            pdf.set_fill_color(248, 250, 252)
+            pdf.set_draw_color(226, 232, 240)
+            pdf.set_line_width(0.3)
+            pdf.rect(curr_x, box_y, box_w, box_h, "DF")
 
-        pdf.cell(115, 5, f"  Rendimiento Estimado (ajustado por modelo agrometeorológico)", border=1)
-        pdf.cell(65, 5, f"{fin['rendimiento_estimado_qq_mz']} qq/manzana", border=1, ln=True, align="R")
+            pdf.set_xy(curr_x + 2, box_y + 1.8)
+            pdf.set_font("Helvetica", "B", 7)
+            pdf.set_text_color(100, 116, 139)
+            pdf.cell(box_w - 4, 3.5, label, ln=True, align="C")
 
-        pdf.cell(115, 5, f"  Producción Total Estimada de Maíz {fin.get('tipo_maiz', '')}", border=1)
-        pdf.cell(65, 5, f"{fin['produccion_total_estimada_qq']} quintales (qq)", border=1, ln=True, align="R")
+            pdf.set_xy(curr_x + 2, box_y + 5.8)
+            pdf.set_font("Helvetica", "B", 8.5)
+            pdf.set_text_color(15, 23, 42)
+            pdf.cell(box_w - 4, 4.5, val_top, ln=True, align="C")
 
-        pdf.cell(115, 5, f"  Precio Oficial MAGA al Productor (Actualizado al {fin['fecha_actualizacion_maga']})", border=1)
-        pdf.cell(65, 5, f"Q {fin['precio_maga_qq']:.2f} / quintal", border=1, ln=True, align="R")
+            pdf.set_xy(curr_x + 2, box_y + 10.8)
+            pdf.set_font("Helvetica", "", 6.8)
+            pdf.set_text_color(71, 85, 105)
+            pdf.cell(box_w - 4, 3.5, val_sub, ln=True, align="C")
 
-        pdf.cell(115, 5.5, "  Ingreso Bruto Proyectado por Venta de Cosecha", border=1)
-        pdf.cell(65, 5.5, f"Q {fin['ingreso_bruto_q']:,.2f}", border=1, ln=True, align="R")
+        # Texto técnico de forma y perímetro con gramática cuidada
+        pdf.set_y(109)
+        pdf.set_font("Helvetica", "", 7.6)
+        pdf.set_text_color(71, 85, 105)
+        sem_postura = d.get('semillas_por_postura', 2)
+        sem_txt = f"{sem_postura} semilla por postura" if sem_postura == 1 else f"{sem_postura} semillas por postura"
+        perim_txt = f"Configuración: {forma_desc} - Perímetro del terreno: {t.get('perimetro_m', 0):,.1f} metros - {sem_txt}"
+        pdf.cell(0, 4, perim_txt, ln=True)
 
-        # Color de utilidad neta
-        if fin["utilidad_neta_q"] >= 0:
-            pdf.set_text_color(22, 101, 52)
+        # ---------------------------------------------------------
+        # SECCIÓN 4: PROYECCIÓN FINANCIERA Y PÉRDIDAS & GANANCIAS
+        # ---------------------------------------------------------
+        fin = report_data.get("financiero", {})
+        pdf.set_y(116)
+        pdf.set_font("Helvetica", "B", 9.5)
+        pdf.set_text_color(27, 77, 62)
+        pdf.cell(0, 5, "4. PROYECCIÓN FINANCIERA Y ESTADO DE RESULTADOS", ln=True)
+
+        fuente_clean = str(fin.get('fuente_oficial_maga', 'MAGA SIMPA')).replace("/", " - ").replace("(", "").replace(")", "").strip()
+        fecha_clean = str(fin.get('fecha_actualizacion_maga', '')).strip()
+        pdf.set_font("Helvetica", "I", 7.2)
+        pdf.set_text_color(100, 116, 139)
+        pdf.cell(0, 3.8, f"Precios oficiales de referencia: {fuente_clean} - Actualizado al {fecha_clean}", ln=True)
+
+        pdf.ln(1)
+        # Encabezado de la tabla de P&L
+        pdf.set_fill_color(241, 245, 249)
+        pdf.set_draw_color(203, 213, 225)
+        pdf.set_line_width(0.3)
+        pdf.set_font("Helvetica", "B", 7.6)
+        pdf.set_text_color(30, 41, 59)
+        pdf.cell(120, 5, "  Indicador Financiero Evaluado", border=1, fill=True)
+        pdf.cell(60, 5, "Valor Proyectado  ", border=1, fill=True, ln=True, align="R")
+
+        rows_pnl = [
+            ("Capital de Inversión Aportado por el Productor", f"Q {fin.get('capital_inversion_q', 0):,.2f}"),
+            ("Rendimiento Esperado según Modelo Climático", f"{fin.get('rendimiento_estimado_qq_mz', 0)} quintales por manzana"),
+            (f"Producción Total Estimada de Maíz {fin.get('tipo_maiz', 'Blanco')}", f"{fin.get('produccion_total_estimada_qq', 0)} quintales"),
+            ("Precio Oficial MAGA al Productor Mayorista", f"Q {fin.get('precio_maga_qq', 0):.2f} por quintal"),
+            ("Ingreso Bruto Proyectado por Cosecha", f"Q {fin.get('ingreso_bruto_q', 0):,.2f}")
+        ]
+
+        pdf.set_font("Helvetica", "", 7.6)
+        pdf.set_text_color(15, 23, 42)
+        for label, val in rows_pnl:
+            pdf.cell(120, 4.4, f"  {label}", border=1)
+            pdf.cell(60, 4.4, f"{val}  ", border=1, ln=True, align="R")
+
+        # Fila de Utilidad Neta y ROI
+        utilidad = fin.get("utilidad_neta_q", 0)
+        roi = fin.get("roi_pct", 0)
+        if utilidad >= 0:
+            pdf.set_fill_color(236, 253, 245)
+            pdf.set_text_color(6, 95, 70)
         else:
-            pdf.set_text_color(185, 28, 28)
-        pdf.set_font("Helvetica", "B", 8.5)
-        pdf.cell(115, 6, f"  UTILIDAD NETA ESPERADA (ROI: {fin['roi_pct']}%)", border=1)
-        pdf.cell(65, 6, f"Q {fin['utilidad_neta_q']:,.2f}", border=1, ln=True, align="R")
+            pdf.set_fill_color(254, 242, 242)
+            pdf.set_text_color(153, 27, 27)
 
-        pdf.set_text_color(0, 0, 0)
-        pdf.set_font("Helvetica", "", 8.5)
-        pdf.ln(1.5)
-        pdf.cell(95, 4.5, f"Punto de Equilibrio: {fin['punto_equilibrio_qq']} quintales", ln=False)
-        pdf.cell(85, 4.5, f"Inversión por Quintal: Q {fin['inversion_por_quintal_q']:,.2f} / qq", ln=True)
-
-        # Tabla de Análisis de Sensibilidad
-        pdf.ln(2)
-        pdf.set_font("Helvetica", "B", 9)
-        pdf.cell(0, 5, "Análisis de Sensibilidad de Escenarios:", ln=True)
         pdf.set_font("Helvetica", "B", 8)
-        pdf.set_fill_color(245, 245, 245)
-        pdf.cell(65, 5, "Escenario", border=1, fill=True)
-        pdf.cell(25, 5, "Rend. (qq/mz)", border=1, fill=True, align="C")
-        pdf.cell(25, 5, "Prod. (qq)", border=1, fill=True, align="C")
-        pdf.cell(35, 5, "Ingreso Bruto (Q)", border=1, fill=True, align="R")
-        pdf.cell(30, 5, "Utilidad Neta (Q)", border=1, fill=True, align="R", ln=True)
+        pdf.cell(120, 5.2, f"  UTILIDAD NETA ESPERADA - Retorno sobre Inversión: {roi}%", border=1, fill=True)
+        pdf.cell(60, 5.2, f"Q {utilidad:,.2f}  ", border=1, fill=True, ln=True, align="R")
 
-        pdf.set_font("Helvetica", "", 7.5)
-        for esc in fin["escenarios_sensibilidad"]:
-            pdf.cell(65, 4.5, esc["Escenario"][:36], border=1)
-            pdf.cell(25, 4.5, str(esc["Rendimiento (qq/mz)"]), border=1, align="C")
-            pdf.cell(25, 4.5, str(esc["Producción Total (qq)"]), border=1, align="C")
-            pdf.cell(35, 4.5, f"Q {esc['Ingreso Bruto (Q)']:,.2f}", border=1, align="R")
-            u_color = (22, 101, 52) if esc["Utilidad Neta (Q)"] >= 0 else (185, 28, 28)
-            pdf.set_text_color(*u_color)
-            pdf.cell(30, 4.5, f"Q {esc['Utilidad Neta (Q)']:,.2f}", border=1, align="R", ln=True)
-            pdf.set_text_color(0, 0, 0)
+        # Subindicadores de apoyo
+        pdf.ln(1.5)
+        pdf.set_font("Helvetica", "", 7.4)
+        pdf.set_text_color(71, 85, 105)
+        sub_fin_txt = f"Punto de equilibrio para cubrir costos: {fin.get('punto_equilibrio_qq', 0)} quintales - Inversión por quintal producido: Q {fin.get('inversion_por_quintal_q', 0):,.2f}"
+        pdf.cell(0, 4, sub_fin_txt, ln=True)
 
-        # Página 2: Anexos Gráficos
+        # ---------------------------------------------------------
+        # SECCIÓN 5: ANÁLISIS DE SENSIBILIDAD DE ESCENARIOS
+        # ---------------------------------------------------------
+        pdf.set_y(166)
+        pdf.set_font("Helvetica", "B", 9.5)
+        pdf.set_text_color(27, 77, 62)
+        pdf.cell(0, 5, "5. ANÁLISIS DE SENSIBILIDAD DE ESCENARIOS DE COSECHA", ln=True)
+
+        pdf.set_font("Helvetica", "", 7.2)
+        pdf.set_text_color(100, 116, 139)
+        pdf.cell(0, 3.6, "Proyecciones bajo variaciones en el régimen pluviométrico durante el ciclo del cultivo:", ln=True)
+
+        pdf.ln(1)
+        # Encabezado de la tabla de sensibilidad
+        # Anchos calibrados: 72 + 25 + 25 + 29 + 29 = 180mm exactos
+        pdf.set_fill_color(241, 245, 249)
+        pdf.set_draw_color(203, 213, 225)
+        pdf.set_font("Helvetica", "B", 7.4)
+        pdf.set_text_color(30, 41, 59)
+        pdf.cell(72, 4.8, "  Escenario Pluviométrico", border=1, fill=True)
+        pdf.cell(25, 4.8, "Rend. qq/mz", border=1, fill=True, align="C")
+        pdf.cell(25, 4.8, "Prod. qq", border=1, fill=True, align="C")
+        pdf.cell(29, 4.8, "Ingreso Bruto", border=1, fill=True, align="R")
+        pdf.cell(29, 4.8, "Utilidad Neta  ", border=1, fill=True, align="R", ln=True)
+
+        pdf.set_font("Helvetica", "", 7.2)
+        for esc in fin.get("escenarios_sensibilidad", []):
+            esc_name = str(esc.get("Escenario", "")).strip()
+            rend_val = str(esc.get("Rendimiento (qq/mz)", esc.get("rendimiento", "")))
+            prod_val = str(esc.get("Producción Total (qq)", esc.get("produccion", "")))
+            ingr_val = esc.get("Ingreso Bruto (Q)", esc.get("ingreso_bruto", 0))
+            util_val = esc.get("Utilidad Neta (Q)", esc.get("utilidad_neta", 0))
+
+            pdf.set_text_color(15, 23, 42)
+            pdf.cell(72, 4.4, f"  {esc_name}", border=1)
+            pdf.cell(25, 4.4, rend_val, border=1, align="C")
+            pdf.cell(25, 4.4, prod_val, border=1, align="C")
+            pdf.cell(29, 4.4, f"Q {ingr_val:,.2f}", border=1, align="R")
+
+            if util_val >= 0:
+                pdf.set_text_color(6, 95, 70)
+            else:
+                pdf.set_text_color(185, 28, 28)
+            pdf.cell(29, 4.4, f"Q {util_val:,.2f}  ", border=1, align="R", ln=True)
+
+        # ---------------------------------------------------------
+        # PÁGINA 2: ANEXOS TÉCNICOS Y GRÁFICOS
+        # ---------------------------------------------------------
         if chart_paths:
             pdf.add_page()
-            pdf.set_font("Helvetica", "B", 11)
-            pdf.cell(0, 6, "5. ANEXOS GRÁFICOS: BALANCE HÍDRICO Y PLANO A ESCALA", ln=True)
-            pdf.ln(3)
 
-            y_pos = 28
-            if "water_balance" in chart_paths and Path(chart_paths["water_balance"]).exists():
-                pdf.image(str(chart_paths["water_balance"]), x=15, y=y_pos, w=180)
-                y_pos += 115
+            pdf.set_y(24)
+            pdf.set_font("Helvetica", "B", 9.5)
+            pdf.set_text_color(27, 77, 62)
+            pdf.cell(0, 5, "6. ANEXOS TÉCNICOS: BALANCE HÍDRICO Y PLANO GEOMÉTRICO", ln=True)
 
-            if "terrain" in chart_paths and Path(chart_paths["terrain"]).exists() and y_pos < 185:
-                pdf.image(str(chart_paths["terrain"]), x=25, y=y_pos, w=160)
+            wb_path = chart_paths.get("water_balance")
+            ter_path = chart_paths.get("terrain")
+
+            # Gráfico 1: Balance Hídrico (calibrado y centrado)
+            if wb_path and Path(wb_path).exists():
+                pdf.image(str(wb_path), x=20, y=30, w=170, h=86)
+                pdf.set_xy(15, 118)
+                pdf.set_font("Helvetica", "I", 7.2)
+                pdf.set_text_color(71, 85, 105)
+                pdf.cell(180, 4, "Gráfico 1: Demanda hídrica diaria vs acumulación de lluvia y humedad de suelo en la ventana de 60 días.", align="C", ln=True)
+
+            # Gráfico 2: Plano del Terreno (calibrado y centrado)
+            if ter_path and Path(ter_path).exists():
+                pdf.image(str(ter_path), x=30, y=124, w=150, h=84)
+                pdf.set_xy(15, 210)
+                pdf.set_font("Helvetica", "I", 7.2)
+                pdf.set_text_color(71, 85, 105)
+                pdf.cell(180, 4, "Gráfico 2: Plano a escala del predio con orientación cardinal y trazado sugerido de surcos.", align="C", ln=True)
+
+            # Sello de Validez y Responsabilidad Técnica
+            pdf.set_y(217)
+            pdf.set_fill_color(248, 250, 252)
+            pdf.set_draw_color(226, 232, 240)
+            pdf.set_line_width(0.3)
+            pdf.rect(15, 217, 180, 24, "DF")
+
+            pdf.set_xy(18, 219)
+            pdf.set_font("Helvetica", "B", 7.8)
+            pdf.set_text_color(27, 77, 62)
+            pdf.cell(174, 4, "METODOLOGÍA CIENTÍFICA Y RESPONSABILIDAD TÉCNICA", ln=True)
+
+            pdf.set_xy(18, 224)
+            pdf.set_font("Helvetica", "", 7.1)
+            pdf.set_text_color(71, 85, 105)
+            nota_cierre = (
+                "Este informe integra datos de reanálisis satelital ERA5 (ECMWF, 1981-2026), índices oceánicos ENSO (NOAA PSL), "
+                "ecuaciones edafológicas Saxton & Rawls para suelo franco-arcilloso y cotizaciones del Sistema de Información de Mercados (MAGA SIMPA). "
+                "Las recomendaciones constituyen una guía técnica de apoyo agronómico y no sustituyen la inspección directa del productor en campo."
+            )
+            pdf.multi_cell(174, 3.3, nota_cierre)
 
         pdf.output(str(pdf_file))
-        print(f"  [PDF] Informe generado exitosamente en: {pdf_file.name}")
+        print(f"  [PDF] Informe ejecutivo generado exitosamente en: {pdf_file.name}")
         return pdf_file
 
     except ImportError:
-        print("  [PDF Info] fpdf2 no está instalado en el entorno. Se generó versión completa en Markdown.")
+        print("  [PDF Info] fpdf2 no está disponible. Se generó versión completa en Markdown.")
         return md_file
 
 
@@ -232,72 +444,65 @@ def _build_markdown_summary(
     data: Dict[str, Any],
     chart_paths: Optional[Dict[str, Path]] = None
 ) -> str:
-    """Construye un reporte en formato Markdown legible y limpio."""
+    """Construye un reporte en formato Markdown legible y limpio sin paréntesis ni slashes técnicos."""
     t = data["terreno"]
     d = data["densidad"]
     fin = data["financiero"]
-    forma_desc = t.get("forma", "Parcela")
-    
+    forma_desc = str(t.get("forma", "Parcela")).replace("(", "").replace(")", "").strip()
+
     md = [
         "# INFORME DE VIABILIDAD AGRÍCOLA Y PROYECCIÓN FINANCIERA",
         "**Cultivo:** Maíz (*Zea mays*)  ",
-        f"**Ubicación:** {data['municipio']} ({data['lat']:.4f}, {data['lon']:.4f})  ",
+        f"**Ubicación:** {data['municipio']} - Coordenadas {data['lat']:.4f}° N, {abs(data['lon']):.4f}° O  ",
         f"**Fecha Tentativa de Siembra:** {data['fecha_siembra']}  ",
         f"**Fase ENSO Observada:** {data['fase_enso']}  ",
         "",
         "---",
         "",
         "## 1. Dictamen Agrometeorológico",
-        f"- **Estado Semáforo:** `{data['semaforo_estado']}` ({data.get('semaforo_color', '')})",
-        f"- **Probabilidad Calibrada de Éxito:** **{data['probabilidad']*100:.1f}%**",
+        f"- **Estado:** {data['semaforo_estado']}",
+        f"- **Viabilidad Climática Estimada:** {data['probabilidad']*100:.1f}%",
         f"- **Recomendación Operativa:** {data['semaforo_accion']}",
-        f"- **Criterio de Viabilidad Agrometeorológica:** Demanda hídrica mínima $ET_a/ET_c \\ge {data.get('criterios_algoritmo', {}).get('eta_etc_min', 0.90):.2f}$ (90%) | Límite anegamiento: $\\le {data.get('criterios_algoritmo', {}).get('waterlog_max_days', 8)}$ días | Ventana crítica: 60 días",
-        *(
-            [
-                f"- **Validación Histórica Ex-Post (a 60 días):** $ET_a/ET_c = {data['evaluacion_historica'].get('eta_etc_real'):.2f}$ | Anegamiento = {data['evaluacion_historica'].get('dias_anegamiento_real')} días -> **{data['evaluacion_historica'].get('resultado_real')}** ({data['evaluacion_historica'].get('motivo_fallo')})",
-                f"- **Nota:** {data['evaluacion_historica'].get('nota_discrepancia')}",
-            ]
-            if data.get("evaluacion_historica", {}).get("disponible")
-            else []
-        ),
+        f"- **Criterios Evaluados:** Demanda hídrica mínima ETa vs ETc {data.get('criterios_algoritmo', {}).get('eta_etc_min', 0.90)*100:.0f}% - Límite de anegamiento {data.get('criterios_algoritmo', {}).get('waterlog_max_days', 8)} días - Ventana fenológica 60 días",
         "",
         "---",
         "",
-        "## 2. Modelado del Terreno y Densidad de Siembra (RF-05, RF-06)",
+        "## 2. Modelado de Parcela y Densidad de Siembra",
         f"- **Forma del Terreno:** {forma_desc}",
-        f"- **Superficie Total:** {t['area_m2']:,.1f} m² ({t['manzanas']:.3f} manzanas | {t['hectareas']:.3f} hectáreas)",
-        f"- **Perímetro Total:** {t.get('perimetro_m', 0):,.1f} m",
-        f"- **Densidad Recomendada:** **{d['densidad_plantas_m2']} plantas/m²** ({d['densidad_plantas_mz']:,} plantas/manzana)",
+        f"- **Superficie Total:** {t['area_m2']:,.1f} m² - {t['manzanas']:.3f} manzanas - {t['hectareas']:.3f} hectáreas",
+        f"- **Perímetro Total:** {t.get('perimetro_m', 0):,.1f} metros",
+        f"- **Densidad Recomendada:** {d['densidad_plantas_m2']} plantas por m² - {d['densidad_plantas_mz']:,} plantas por manzana",
         f"- **Población Total Estimada:** {d['plantas_totales_predio']:,} plantas",
-        f"- **Semilla Comercial Requerida:** {d['semillas_totales_requeridas']:,} semillas ({d['libras_semilla']} libras / {d['bolsas_comerciales']} bolsas)",
-        f"- **Marco de Plantación:** {d['distancia_surcos_cm']} cm entre surcos × {d['distancia_posturas_cm']} cm entre posturas ({d['semillas_por_postura']} semilla por postura)",
-        f"- **Criterio Técnico:** {d['diagnostico_densidad']}",
+        f"- **Semilla Comercial Requerida:** {d['semillas_totales_requeridas']:,} semillas ({d['libras_semilla']} libras)",
+        f"- **Marco de Plantación:** {d['distancia_surcos_cm']} cm entre surcos × {d['distancia_posturas_cm']} cm entre posturas",
         "",
         "---",
         "",
-        "## 3. Estado de Pérdidas y Ganancias (P&L) y Proyección Financiera (RF-07)",
-        f"> **Fuente Oficial de Precios:** {fin['fuente_oficial_maga']}  ",
-        f"> **Última Fecha de Actualización de Precios:** `{fin['fecha_actualizacion_maga']}`  ",
-        f"> **Precio de Referencia MAGA:** Q {fin['precio_maga_qq']:.2f} por quintal (qq)",
-        "",
-        "### Resumen de Pérdidas y Ganancias",
+        "## 3. Estado de Resultados y Proyección Financiera",
+        f"- **Fuente Oficial de Precios:** {fin['fuente_oficial_maga']}",
+        f"- **Fecha de Actualización:** {fin['fecha_actualizacion_maga']}",
         f"- **Capital de Inversión Aportado por el Productor:** Q {fin['capital_inversion_q']:,.2f}",
-        f"- **Rendimiento Estimado:** {fin['rendimiento_estimado_qq_mz']} qq/manzana",
+        f"- **Rendimiento Estimado:** {fin['rendimiento_estimado_qq_mz']} quintales por manzana",
         f"- **Producción Total Estimada:** {fin['produccion_total_estimada_qq']} quintales",
+        f"- **Precio Oficial MAGA:** Q {fin['precio_maga_qq']:.2f} por quintal",
         f"- **Ingreso Bruto Proyectado:** Q {fin['ingreso_bruto_q']:,.2f}",
-        f"- **Utilidad Neta Proyectada:** **Q {fin['utilidad_neta_q']:,.2f}**",
+        f"- **Utilidad Neta Esperada:** Q {fin['utilidad_neta_q']:,.2f}",
         f"- **Retorno sobre la Inversión (ROI):** {fin['roi_pct']}%",
         f"- **Punto de Equilibrio:** {fin['punto_equilibrio_qq']} quintales",
-        f"- **Inversión por Quintal:** Q {fin['inversion_por_quintal_q']:,.2f} / qq",
+        f"- **Inversión por Quintal:** Q {fin['inversion_por_quintal_q']:,.2f}",
         "",
         "---",
         "",
         "## 4. Análisis de Sensibilidad de Escenarios",
-        "| Escenario | Rendimiento (qq/mz) | Producción (qq) | Ingreso Bruto (Q) | Utilidad Neta (Q) | ROI (%) |",
-        "| :--- | :--- | :--- | :--- | :--- | :--- |",
+        "| Escenario Pluviométrico | Rendimiento (qq/mz) | Producción (qq) | Ingreso Bruto (Q) | Utilidad Neta (Q) |",
+        "| :--- | :---: | :---: | :---: | :---: |",
     ]
 
-    for esc in fin["escenarios_sensibilidad"]:
-        md.append(f"| {esc['Escenario']} | {esc['Rendimiento (qq/mz)']} | {esc['Producción Total (qq)']} | Q {esc['Ingreso Bruto (Q)']:,.2f} | Q {esc['Utilidad Neta (Q)']:,.2f} | {esc['ROI (%)']}% |")
+    for esc in fin.get("escenarios_sensibilidad", []):
+        rend = esc.get("Rendimiento (qq/mz)", esc.get("rendimiento", ""))
+        prod = esc.get("Producción Total (qq)", esc.get("produccion", ""))
+        ingr = esc.get("Ingreso Bruto (Q)", esc.get("ingreso_bruto", 0))
+        util = esc.get("Utilidad Neta (Q)", esc.get("utilidad_neta", 0))
+        md.append(f"| {esc.get('Escenario', '')} | {rend} | {prod} | Q {ingr:,.2f} | Q {util:,.2f} |")
 
     return "\n".join(md)

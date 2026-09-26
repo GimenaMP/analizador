@@ -65,7 +65,7 @@ def plot_water_balance_window(
     ax1.plot(dias, etc_acc, color="#B91C1C", linewidth=2.0, label="ETc acumulada (mm)")
     
     ax1.set_ylabel("Milímetros (mm)", fontsize=11, fontweight="bold")
-    ax1.set_title(f"Comportamiento de Lluvias y Demanda Hídrica de Maíz (RF-04)\n(Ventana Crítica 60 Días: {sowing_date_str} a {e_ts.strftime('%Y-%m-%d')})", fontsize=12, fontweight="bold", pad=12)
+    ax1.set_title(f"Balance Hídrico del Cultivo • Ventana de 60 Días: {sowing_date_str} a {e_ts.strftime('%Y-%m-%d')}", fontsize=11, fontweight="bold", pad=12)
     ax1.legend(loc="upper left", frameon=True, facecolor="white", framealpha=0.9)
     ax1.grid(True, linestyle=":", alpha=0.6)
 
@@ -182,10 +182,10 @@ def plot_terrain_layout(
     ax.set_xlim(min_x - margin_x, max_x + margin_x)
     ax.set_ylim(min_y - margin_y, max_y + margin_y)
     ax.set_aspect("equal")
-    ax.set_title(f"Plano a Escala del Terreno (RF-05) - {terrain.descripcion_forma}", fontsize=12, fontweight="bold", pad=14)
+    ax.set_title(f"Plano Geométrico del Terreno • {terrain.descripcion_forma}", fontsize=12, fontweight="bold", pad=14)
     ax.grid(True, linestyle=":", alpha=0.45)
-    ax.set_xlabel("Distancia este-oeste (metros)", fontsize=9, color="#4B5563")
-    ax.set_ylabel("Distancia norte-sur (metros)", fontsize=9, color="#4B5563")
+    ax.set_xlabel("Distancia este a oeste en metros", fontsize=9, color="#4B5563")
+    ax.set_ylabel("Distancia norte a sur en metros", fontsize=9, color="#4B5563")
 
     plt.tight_layout()
     save_path = output_path or (PATH_CONFIG.output_dir / "plano_terreno.png")

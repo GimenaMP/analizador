@@ -120,7 +120,7 @@ def semaforo(
         )
     elif prob >= sem_cfg.prob_alerta_min:
         return (
-            "CONDICIONADO / ALERTA",
+            "CONDICIONADO O EN ALERTA",
             "Amarillo",
             "Riesgo hídrico moderado: emplear variedades precoces o tolerantes a sequía, labranza de conservación y monitoreo de humedad."
         )

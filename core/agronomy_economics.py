@@ -117,11 +117,11 @@ class TerrainModel:
     def descripcion_forma(self) -> str:
         if self.shape_type == "cuadrilatero":
             s = self.sides
-            return f"Cuadrilátero Irregular (Lados: {s[0]:.1f}m, {s[1]:.1f}m, {s[2]:.1f}m, {s[3]:.1f}m)"
+            return f"Cuadrilátero Irregular - {s[0]:.0f}m, {s[1]:.0f}m, {s[2]:.0f}m, {s[3]:.0f}m"
         elif self.shape_type == "triangulo":
             s = self.sides
-            return f"Triangular (3 lados: {s[0]:.1f}m, {s[1]:.1f}m, {s[2]:.1f}m)"
-        return f"Rectangular ({self.ancho_m:.1f}m ancho x {self.largo_m:.1f}m largo)"
+            return f"Triangular - {s[0]:.0f}m, {s[1]:.0f}m, {s[2]:.0f}m"
+        return f"Rectangular - {self.ancho_m:.0f}m × {self.largo_m:.0f}m"
 
     def get_polygon_vertices(self) -> List[Tuple[float, float]]:
         """
@@ -260,15 +260,15 @@ def calculate_financial_projection(
 
     # 4. Tabla de Pérdidas y Ganancias (P&L) Estructurada y Limpia
     pnl_items = [
-        {"concepto": "Capital de Inversión Aportado (Inversión Total)", "monto": -inversion_total_q, "tipo": "costo"},
-        {"concepto": f"Producción Estimada ({produccion_total_qq:.1f} qq @ Q {precio_qq:.2f}/qq)", "monto": ingreso_bruto_q, "tipo": "ingreso"},
-        {"concepto": "Utilidad Neta Proyectada (Ganancia / Pérdida)", "monto": utilidad_neta_q, "tipo": "resultado"},
+        {"concepto": "Capital de Inversión Aportado: Inversión Total", "monto": -inversion_total_q, "tipo": "costo"},
+        {"concepto": f"Producción Estimada: {produccion_total_qq:.1f} quintales a Q {precio_qq:.2f} por quintal", "monto": ingreso_bruto_q, "tipo": "ingreso"},
+        {"concepto": "Utilidad Neta Proyectada: Ganancia o Pérdida", "monto": utilidad_neta_q, "tipo": "resultado"},
     ]
 
     # 5. Análisis de Sensibilidad de Escenarios
     escenarios = [
         {
-            "Escenario": "Optimista (Buen régimen de lluvias)",
+            "Escenario": "Optimista: Buen régimen de lluvias",
             "Rendimiento (qq/mz)": round(maga_cfg.rendimiento_base_qq_mz * 1.15, 1),
             "Producción Total (qq)": round(maga_cfg.rendimiento_base_qq_mz * 1.15 * mz, 1),
             "Ingreso Bruto (Q)": round(maga_cfg.rendimiento_base_qq_mz * 1.15 * mz * precio_qq, 2),
@@ -276,7 +276,7 @@ def calculate_financial_projection(
             "ROI (%)": round((((maga_cfg.rendimiento_base_qq_mz * 1.15 * mz * precio_qq) - inversion_total_q) / max(inversion_total_q, 1.0)) * 100, 1),
         },
         {
-            "Escenario": "Proyectado (Modelo Clima-Suelo)",
+            "Escenario": "Proyectado: Modelo agroclimático",
             "Rendimiento (qq/mz)": round(rendimiento_qq_mz, 1),
             "Producción Total (qq)": round(produccion_total_qq, 1),
             "Ingreso Bruto (Q)": round(ingreso_bruto_q, 2),
@@ -284,7 +284,7 @@ def calculate_financial_projection(
             "ROI (%)": round(roi_pct, 1),
         },
         {
-            "Escenario": "Pesimista (Déficit hídrico / canícula)",
+            "Escenario": "Pesimista: Déficit hídrico o canícula",
             "Rendimiento (qq/mz)": round(maga_cfg.rendimiento_base_qq_mz * 0.45, 1),
             "Producción Total (qq)": round(maga_cfg.rendimiento_base_qq_mz * 0.45 * mz, 1),
             "Ingreso Bruto (Q)": round(maga_cfg.rendimiento_base_qq_mz * 0.45 * mz * precio_qq, 2),

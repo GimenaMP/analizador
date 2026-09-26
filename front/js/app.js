@@ -16,170 +16,145 @@ document.addEventListener('DOMContentLoaded', () => {
   const waterChart = new WaterBalanceChart('waterChart');
 
   // ==============================================================================
-  // 1. CONTROLADOR DE ANIMACIONES SUAVES Y DESPLAZAMIENTO BIDIRECCIONAL (APPLE DESIGN)
+  // 1. ANIMACIONES DIRIGIDAS POR SCROLL: LENTAS Y VINCULADAS AL MOVIMIENTO DEL USUARIO
+  // - No se activan "de golpe": el desplazamiento y la opacidad avanzan proporcionalmente
+  //   conforme el usuario mueve el scroll hacia abajo, y retroceden al subir.
   // ==============================================================================
-  let globalScrollObserver = null;
   const parallaxImageCards = [];
 
   function setupScrollReveals() {
-    const revealElements = document.querySelectorAll('.reveal-on-scroll');
-    const imageCards = document.querySelectorAll('.hero-photo-wrap, .tech-item-card, .carousel-slide-card, .fox-split-media-col, .about-photo-wrap');
+    const revealElements = Array.from(document.querySelectorAll('.reveal-on-scroll:not(.hero-text-col)'));
+    const imageCards = document.querySelectorAll('.hero-photo-wrap, .carousel-slide-card, .fox-split-media-col, .about-photo-wrap');
 
     imageCards.forEach(card => {
       const img = card.querySelector('img');
-      if (img) {
-        parallaxImageCards.push({ card, img });
-      }
+      if (img) parallaxImageCards.push({ card, img });
     });
 
-    if (!('IntersectionObserver' in window)) {
-      revealElements.forEach(el => el.classList.add('is-revealed'));
-      return;
-    }
-
-    // Inicializar elementos visibles de inmediato sin parpadeo
-    const initialVh = window.innerHeight || document.documentElement.clientHeight;
-    revealElements.forEach(el => {
-      const rect = el.getBoundingClientRect();
-      if (rect.top < initialVh && rect.bottom > 0) {
-        el.classList.add('is-revealed');
-        setTimeout(() => el.classList.add('settled'), 850);
-      }
+    const items = revealElements.map(el => {
+      let delayOffset = 0;
+      if (el.classList.contains('delay-1')) delayOffset = 25;
+      else if (el.classList.contains('delay-2')) delayOffset = 50;
+      else if (el.classList.contains('delay-3')) delayOffset = 75;
+      else if (el.classList.contains('delay-4')) delayOffset = 100;
+      return { el, delayOffset };
     });
 
-    // Observer bidireccional de alto rendimiento
-    globalScrollObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        const el = entry.target;
-        const rect = entry.boundingClientRect;
-        const vh = window.innerHeight || document.documentElement.clientHeight;
-
-        if (entry.isIntersecting) {
-          // Entra en el campo de visión (hacia abajo o hacia arriba)
-          el.classList.add('is-revealed');
-          setTimeout(() => {
-            if (el.classList.contains('is-revealed')) {
-              el.classList.add('settled');
-            }
-          }, 850);
-        } else {
-          // El elemento no está en el viewport.
-          // REGLA CRUCIAL: Solo resetear si está COMPLETAMENTE FUERA de la pantalla con margen amplio (> 120px)
-          // Esto garantiza que mientras el usuario hace scroll, los elementos SE MANTENGAN visibles sin desaparecer.
-          const isFarAbove = rect.bottom < -120;
-          const isFarBelow = rect.top > vh + 120;
-
-          if (isFarAbove || isFarBelow) {
-            el.classList.remove('is-revealed');
-            el.classList.remove('settled');
-          }
-        }
-      });
-    }, {
-      threshold: [0, 0.08, 0.25],
-      rootMargin: '30px 0px 30px 0px'
-    });
-
-    revealElements.forEach(el => globalScrollObserver.observe(el));
-
-    // Parallax de desplazamiento continuo para tarjetas de imágenes y fondo al hacer scroll
     let isTicking = false;
-    const ambientImg = document.querySelector('.ambient-blurred-image');
 
-    function updateImageParallax() {
+    function updateProgressiveScroll() {
       const vh = window.innerHeight || document.documentElement.clientHeight;
       const scrollY = window.pageYOffset || document.documentElement.scrollTop;
 
       // Parallax sutil en fondo ambiental
+      const ambientImg = document.querySelector('.ambient-blurred-image');
       if (ambientImg) {
-        ambientImg.style.transform = `translate3d(0, ${(-scrollY * 0.10).toFixed(1)}px, 0)`;
+        ambientImg.style.transform = `translate3d(0, ${(-scrollY * 0.08).toFixed(1)}px, 0)`;
       }
 
       // Parallax en tarjetas fotográficas
       parallaxImageCards.forEach(({ card, img }) => {
         const rect = card.getBoundingClientRect();
-        // Solo calcular si la tarjeta está visible en o cerca del viewport
         if (rect.bottom > -80 && rect.top < vh + 80) {
           const cardCenter = rect.top + rect.height / 2;
-          const viewportCenter = vh / 2;
-          const progress = (cardCenter - viewportCenter) / (vh / 2);
-          // Desplazamiento dinámico suave entre -20px y +20px
-          const parallaxY = Math.max(-20, Math.min(20, progress * -16));
+          const progress = (cardCenter - (vh / 2)) / (vh / 2);
+          const parallaxY = Math.max(-18, Math.min(18, progress * -14));
           img.style.setProperty('--scroll-parallax', `${parallaxY.toFixed(2)}px`);
         }
       });
+
+      // Recorrido suave y lento para cada elemento animado
+      // Empieza al entrar por la parte inferior de la pantalla (vh * 0.96)
+      // Llega al reposo cuando alcanza vh * 0.44 (recorrido gradual de ~450px de scroll)
+      const startBase = vh * 0.96;
+      const endBase = vh * 0.44;
+
+      items.forEach(({ el, delayOffset }) => {
+        const rect = el.getBoundingClientRect();
+
+        // Si está completamente abajo de la pantalla
+        if (rect.top > vh + 80) {
+          el.style.setProperty('--scroll-p', '0');
+          el.style.setProperty('--scroll-opacity', '0');
+          el.classList.remove('is-settled');
+          return;
+        }
+
+        const itemStart = startBase - delayOffset;
+        const itemEnd = endBase - delayOffset;
+
+        // Si ya superó el punto de llegada (en mitad superior o más arriba)
+        if (rect.top <= itemEnd) {
+          el.style.setProperty('--scroll-p', '1');
+          el.style.setProperty('--scroll-opacity', '1');
+          el.classList.add('is-settled');
+          return;
+        }
+
+        // Progreso 1:1 proporcional al desplazamiento del scroll
+        const rawP = (itemStart - rect.top) / (itemStart - itemEnd);
+        const p = Math.max(0, Math.min(1, rawP));
+
+        // Suavizado polinomial continuo (Smoothstep) para sensación orgánica
+        const eased = p * p * (3 - 2 * p);
+
+        el.style.setProperty('--scroll-p', eased.toFixed(3));
+        el.style.setProperty('--scroll-opacity', Math.min(1, p * 1.30).toFixed(3));
+
+        if (p >= 0.98) {
+          el.classList.add('is-settled');
+        } else {
+          el.classList.remove('is-settled');
+        }
+      });
+
       isTicking = false;
     }
 
-    window.addEventListener('scroll', () => {
+    function onScroll() {
       if (!isTicking) {
-        requestAnimationFrame(updateImageParallax);
+        requestAnimationFrame(updateProgressiveScroll);
         isTicking = true;
       }
-    }, { passive: true });
+    }
 
-    updateImageParallax();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+
+    // Actualización inmediata al cargar
+    updateProgressiveScroll();
   }
   setupScrollReveals();
 
   // ==============================================================================
-  // 1.0 ANIMACIÓN HERO: LA IMAGEN SE DESLIZA DESDE LA DERECHA Y SE POSICIONA
-  // - Se ejecuta con resorte fluido (Apple Spring) en carga inicial y cada vez que se hace scroll
+  // 1.0 ANIMACIÓN HERO: ENTRADA DESDE ARRIBA LENTA, SUAVE Y MAJESTUOSA
   // ==============================================================================
-  function setupHeroPhotoAnimation() {
+  function setupHeroAnimation() {
     const heroPhotoWrap = document.getElementById('heroPhotoWrap');
+    const heroTextCol = document.querySelector('.hero-text-col');
     if (!heroPhotoWrap) return;
-
-    let heroIsVisible = false;
-    let isTicking = false;
 
     function triggerHeroEntrance() {
       heroPhotoWrap.classList.add('is-active-hero');
-      heroIsVisible = true;
+      if (heroTextCol) heroTextCol.classList.add('is-active-hero');
     }
 
-    function resetHeroEntrance() {
-      heroPhotoWrap.classList.remove('is-active-hero');
-      heroIsVisible = false;
-    }
+    // Entrada inicial lenta y majestuosa desde arriba (1.2s en CSS)
+    setTimeout(triggerHeroEntrance, 120);
 
-    // Entrada inicial garantizada en carga
-    setTimeout(() => {
-      triggerHeroEntrance();
-    }, 120);
-
-    function onHeroScroll() {
-      const rect = heroPhotoWrap.getBoundingClientRect();
-      const vh = window.innerHeight || document.documentElement.clientHeight;
-
-      // Si el hero está en el viewport
-      if (rect.bottom > 80 && rect.top < vh - 40) {
-        if (!heroIsVisible) {
-          triggerHeroEntrance();
-        }
-      } else {
-        // Cuando el hero sale de la pantalla hacia arriba o hacia abajo
-        if (heroIsVisible && (rect.bottom < -40 || rect.top > vh + 40)) {
-          resetHeroEntrance();
-        }
-      }
-
-      isTicking = false;
-    }
-
+    // Mantiene activo al volver a la cabecera
     window.addEventListener('scroll', () => {
-      if (!isTicking) {
-        requestAnimationFrame(onHeroScroll);
-        isTicking = true;
+      const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+      if (scrollY <= 80) {
+        triggerHeroEntrance();
       }
     }, { passive: true });
   }
-  setupHeroPhotoAnimation();
+  setupHeroAnimation();
 
   // ==============================================================================
-  // 1.1 CARRUSEL INTERACTIVO DE SERVICIOS (APPLE & EMIL KOWALSKI DESIGN STANDARDS)
-  // - Soporte para botones prev/next, arrastre con ratón (mouse drag),
-  //   gestos táctiles con scroll-snap nativo y sincronización de puntos de paginación.
+  // 1.1 CARRUSEL INTERACTIVO DE SERVICIOS (AUTOPLAY CONTINUO, SWIPE & DIRECT MANIPULATION)
+  // - Movimiento automático sin intervención (3.8s), pausa en hover/touch y loop infinito.
   // ==============================================================================
   function setupServicesCarousel() {
     const viewport = document.getElementById('servicesCarouselViewport');
@@ -196,65 +171,93 @@ document.addEventListener('DOMContentLoaded', () => {
     let startX = 0;
     let scrollLeft = 0;
     let hasMoved = false;
+    let autoPlayTimer = null;
+    const AUTOPLAY_INTERVAL = 3800; // 3.8s: lectura cómoda y movimiento perceptible
 
-    // Actualizar botones, contador y dots según posición de scroll
-    function updateCarouselState() {
+    // Calcular slide activo más cercano al viewport
+    function getActiveSlideIndex() {
       const scrollPos = viewport.scrollLeft;
-      const maxScroll = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
-
-      // Estado de botones prev / next
-      if (prevBtn) prevBtn.disabled = scrollPos <= 8;
-      if (nextBtn) nextBtn.disabled = scrollPos >= maxScroll - 8;
-
-      // Calcular slide activo más cercano al borde izquierdo
       let activeIndex = 0;
       let minDistance = Infinity;
 
       slides.forEach((slide, idx) => {
-        const distance = Math.abs(slide.offsetLeft - viewport.offsetLeft - scrollPos);
+        const distance = Math.abs((slide.offsetLeft - viewport.offsetLeft) - scrollPos);
         if (distance < minDistance) {
           minDistance = distance;
           activeIndex = idx;
         }
       });
+      return activeIndex;
+    }
 
-      // Actualizar contador numérico (formato 01, 02...)
+    // Actualizar contador numérico y dots según slide activo
+    function updateCarouselState() {
+      const activeIndex = getActiveSlideIndex();
+
       if (counterCurrent) {
         counterCurrent.textContent = String(activeIndex + 1).padStart(2, '0');
       }
 
-      // Actualizar pastillas / dots de paginación
       dots.forEach((dot, idx) => {
         dot.classList.toggle('is-active', idx === activeIndex);
       });
     }
 
-    // Navegación con flechas prev / next
-    function scrollByDirection(direction) {
-      const slideWidth = slides[0].offsetWidth + 24; // ancho + gap
-      viewport.scrollBy({
-        left: direction * slideWidth,
-        behavior: 'smooth'
+    // Navegar a un slide específico con posición exacta
+    function goToSlide(index, smooth = true) {
+      if (index < 0) index = slides.length - 1;
+      if (index >= slides.length) index = 0;
+
+      const targetOffset = slides[index].offsetLeft - viewport.offsetLeft;
+      viewport.scrollTo({
+        left: targetOffset,
+        behavior: smooth ? 'smooth' : 'auto'
       });
     }
 
-    if (prevBtn) {
-      prevBtn.addEventListener('click', () => scrollByDirection(-1));
-    }
-    if (nextBtn) {
-      nextBtn.addEventListener('click', () => scrollByDirection(1));
+    // Avance automático continuo (loop infinito)
+    function advanceSlideAuto() {
+      const current = getActiveSlideIndex();
+      const next = (current + 1) % slides.length;
+      goToSlide(next, true);
     }
 
-    // Clic en dots para saltar a slide específico
+    function startAutoPlay() {
+      stopAutoPlay();
+      autoPlayTimer = setInterval(advanceSlideAuto, AUTOPLAY_INTERVAL);
+    }
+
+    function stopAutoPlay() {
+      if (autoPlayTimer) {
+        clearInterval(autoPlayTimer);
+        autoPlayTimer = null;
+      }
+    }
+
+    // Botones prev / next
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        stopAutoPlay();
+        goToSlide(getActiveSlideIndex() - 1, true);
+        startAutoPlay();
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        stopAutoPlay();
+        goToSlide(getActiveSlideIndex() + 1, true);
+        startAutoPlay();
+      });
+    }
+
+    // Clic en dots para ir al slide correspondiente
     dots.forEach(dot => {
       dot.addEventListener('click', () => {
         const slideIndex = parseInt(dot.getAttribute('data-slide'), 10);
         if (!isNaN(slideIndex) && slides[slideIndex]) {
-          const targetOffset = slides[slideIndex].offsetLeft - viewport.offsetLeft;
-          viewport.scrollTo({
-            left: targetOffset,
-            behavior: 'smooth'
-          });
+          stopAutoPlay();
+          goToSlide(slideIndex, true);
+          startAutoPlay();
         }
       });
     });
@@ -271,8 +274,18 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }, { passive: true });
 
+    // Pausa al posar el cursor o interactuar; reanudación al salir
+    const carouselSection = document.getElementById('servicios') || viewport;
+    carouselSection.addEventListener('mouseenter', stopAutoPlay);
+    carouselSection.addEventListener('mouseleave', startAutoPlay);
+    viewport.addEventListener('touchstart', stopAutoPlay, { passive: true });
+    viewport.addEventListener('touchend', () => {
+      setTimeout(startAutoPlay, 1500);
+    }, { passive: true });
+
     // Arrastre con ratón en escritorio (Mouse Drag / Direct Manipulation)
     viewport.addEventListener('mousedown', (e) => {
+      stopAutoPlay();
       isDown = true;
       hasMoved = false;
       startX = e.pageX - viewport.offsetLeft;
@@ -287,6 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
       viewport.style.scrollBehavior = 'smooth';
       viewport.style.scrollSnapType = 'x mandatory';
       updateCarouselState();
+      startAutoPlay();
     });
 
     viewport.addEventListener('mousemove', (e) => {
@@ -298,7 +312,6 @@ document.addEventListener('DOMContentLoaded', () => {
       viewport.scrollLeft = scrollLeft - walk;
     });
 
-    // Prevenir clics accidentales si el usuario arrastró
     viewport.addEventListener('click', (e) => {
       if (hasMoved) {
         e.preventDefault();
@@ -306,47 +319,24 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }, true);
 
-    // Navegación accesible por teclado (Flechas Izquierda / Derecha)
+    // Navegación accesible por teclado
     viewport.setAttribute('tabindex', '0');
     viewport.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        scrollByDirection(-1);
+        stopAutoPlay();
+        goToSlide(getActiveSlideIndex() - 1, true);
+        startAutoPlay();
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        scrollByDirection(1);
+        stopAutoPlay();
+        goToSlide(getActiveSlideIndex() + 1, true);
+        startAutoPlay();
       }
     });
 
-    // Avance suave automático cada 6s (con pausa al pasar el ratón o interactuar)
-    let autoPlayTimer = null;
-    function startAutoPlay() {
-      stopAutoPlay();
-      autoPlayTimer = setInterval(() => {
-        const scrollPos = viewport.scrollLeft;
-        const maxScroll = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
-        if (scrollPos >= maxScroll - 16) {
-          viewport.scrollTo({ left: 0, behavior: 'smooth' });
-        } else {
-          scrollByDirection(1);
-        }
-      }, 5500);
-    }
-
-    function stopAutoPlay() {
-      if (autoPlayTimer) {
-        clearInterval(autoPlayTimer);
-        autoPlayTimer = null;
-      }
-    }
-
-    viewport.addEventListener('mouseenter', stopAutoPlay);
-    viewport.addEventListener('mouseleave', startAutoPlay);
-    viewport.addEventListener('touchstart', stopAutoPlay, { passive: true });
-    viewport.addEventListener('touchend', startAutoPlay, { passive: true });
+    // Iniciar autoplay de inmediato
     startAutoPlay();
-
-    // Inicializar estado inmediato
     updateCarouselState();
   }
   setupServicesCarousel();
@@ -561,7 +551,7 @@ document.addEventListener('DOMContentLoaded', () => {
       seasonBadge.textContent = 'Época de Postrera';
       seasonBadge.className = 'season-tag postrera';
     } else {
-      seasonBadge.textContent = 'Fuera de Ventana (Riego Obligatorio)';
+      seasonBadge.textContent = 'Fuera de Ventana • Riego Obligatorio';
       seasonBadge.className = 'season-tag fuera';
     }
   }
@@ -719,10 +709,23 @@ document.addEventListener('DOMContentLoaded', () => {
     semaforoCard.className = `semaforo-banner ${colorLower} reveal-on-scroll from-scale is-revealed`;
     trafficLightBadge.innerHTML = '<span class="beacon-core"></span>';
 
-    verdictTitle.textContent = `${data.semaforo_estado || 'DICTAMEN'} (${probPct}%)`;
-    verdictProb.textContent = `${probPct}% Probabilidad Calibrada`;
-    verdictEnso.textContent = `Condición ENSO: ${data.fase_enso}`;
-    verdictAction.textContent = data.semaforo_accion;
+    // Limpieza estricta de paréntesis y diagonales en el título y estado
+    let rawState = data.semaforo_estado || 'DICTAMEN';
+    rawState = rawState.replace(/[()]/g, '').replace(/\s*\/\s*/g, ' O ').trim();
+    if (rawState === 'CONDICIONADO O ALERTA' || rawState === 'CONDICIONADO O EN ALERTA') {
+      rawState = 'SIEMBRA CONDICIONADA';
+    } else if (rawState === 'ÓPTIMO' || rawState === 'OPTIMO') {
+      rawState = 'SIEMBRA RECOMENDADA';
+    } else if (rawState === 'NO SEMBRAR') {
+      rawState = 'NO SE RECOMIENDA SEMBRAR';
+    }
+
+    verdictTitle.textContent = rawState;
+    verdictProb.textContent = `${probPct}% de Viabilidad Climática`;
+    verdictEnso.textContent = `Fase Climática: ${(data.fase_enso || 'Neutral').replace(/[()]/g, '').replace(/\s*\/\s*/g, ' o ')}`;
+    verdictAction.textContent = (data.semaforo_accion || '')
+      .replace(/[()]/g, '')
+      .replace(/\s*\/\s*/g, ' o ');
 
     // Validación Histórica Ex-Post
     const histBox = document.getElementById('historicalValidationBox');
@@ -745,13 +748,17 @@ document.addEventListener('DOMContentLoaded', () => {
         histBadge.textContent = 'FRACASO HISTÓRICO';
       }
 
+      const etaVal = (typeof ev.eta_etc_real === 'number' ? ev.eta_etc_real.toFixed(2) : ev.eta_etc_real);
+      const motivoClean = (ev.motivo_fallo || '').replace(/[()]/g, '').replace(/\s*\/\s*/g, ' a ');
+      const notaClean = (ev.nota_discrepancia || '').replace(/[()]/g, '').replace(/\s*\/\s*/g, ' a ');
+
       histStats.innerHTML = `
-        <strong>ET<sub>a</sub>/ET<sub>c</sub> Observado:</strong> <code>${(typeof ev.eta_etc_real === 'number' ? ev.eta_etc_real.toFixed(2) : ev.eta_etc_real)}</code> (Umbral estricto: &ge; 0.90) &bull; 
-        <strong>Anegamiento:</strong> <code>${ev.dias_anegamiento_real} días</code> (&le; 8) &bull; 
-        <strong>Causa:</strong> <span>${ev.motivo_fallo}</span>
+        <strong>Relación hídrica observada:</strong> <code>${etaVal}</code> &bull; Umbral estricto &ge; 0.90 &bull; 
+        <strong>Días de anegamiento:</strong> <code>${ev.dias_anegamiento_real} días</code> &bull; Máximo 8 días &bull; 
+        <strong>Causa:</strong> <span>${motivoClean}</span>
       `;
       histNote.innerHTML = `
-        <strong>Nota analítica:</strong> ${ev.nota_discrepancia}
+        <strong>Nota analítica:</strong> ${notaClean}
       `;
     } else if (histBox) {
       histBox.style.display = 'none';
@@ -774,29 +781,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 4. Densidad de Siembra (RF-06)
     const d = data.densidad;
-    valDensityM2.textContent = `${d.densidad_plantas_m2} pl/m²`;
-    valDensityMz.textContent = `${d.densidad_plantas_mz.toLocaleString()} pl/mz`;
+    valDensityM2.textContent = `${d.densidad_plantas_m2} plantas por m²`;
+    valDensityMz.textContent = `${d.densidad_plantas_mz.toLocaleString()} plantas por manzana`;
     valTotalPlants.textContent = `${d.plantas_totales_predio.toLocaleString()} plantas totales`;
     valTotalSeeds.textContent = `${d.semillas_totales_requeridas.toLocaleString()} semillas`;
-    valSeedBags.textContent = `${d.bolsas_comerciales} bolsas (~${d.libras_semilla} lbs)`;
-    valSpacing.textContent = `${d.distancia_surcos_cm} cm surco • ${d.distancia_posturas_cm} cm postura`;
-    valDensityCriteria.textContent = d.diagnostico_densidad;
+    valSeedBags.textContent = `${d.bolsas_comerciales} bolsas • ${d.libras_semilla} libras`;
+    valSpacing.textContent = `${d.distancia_surcos_cm} cm entre surcos • ${d.distancia_posturas_cm} cm entre posturas`;
+    valDensityCriteria.textContent = (d.diagnostico_densidad || '')
+      .replace(/[()]/g, '')
+      .replace(/\s*\/\s*/g, ' o ');
 
     // 5. Finanzas y P&L (RF-07)
     const f = data.financiero;
-    magaDateBadge.textContent = f.fecha_actualizacion_maga;
-    magaPriceBadge.textContent = `Q ${f.precio_maga_qq.toFixed(2)}/qq`;
+    if (magaDateBadge) magaDateBadge.textContent = f.fecha_actualizacion_maga;
+    if (magaPriceBadge) magaPriceBadge.textContent = `Q ${f.precio_maga_qq.toFixed(2)} por quintal`;
 
-    kpiYield.textContent = `${f.rendimiento_estimado_qq_mz} qq/mz`;
+    kpiYield.textContent = `${f.rendimiento_estimado_qq_mz} qq por manzana`;
     kpiCost.textContent = `Q ${f.capital_inversion_q.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
     kpiRevenue.textContent = `Q ${f.ingreso_bruto_q.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
     kpiNetProfit.textContent = `Q ${f.utilidad_neta_q.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
     
     if (f.utilidad_neta_q >= 0) {
-      kpiRoiSub.textContent = `ROI Proyectado: +${f.roi_pct}%`;
+      kpiRoiSub.textContent = `Retorno sobre inversión ROI: +${f.roi_pct}%`;
       kpiRoiSub.style.color = 'var(--green-main)';
     } else {
-      kpiRoiSub.textContent = `ROI Proyectado: ${f.roi_pct}% (Riesgo de pérdida)`;
+      kpiRoiSub.textContent = `Retorno sobre inversión ROI: ${f.roi_pct}% • Riesgo de pérdida`;
       kpiRoiSub.style.color = 'var(--red-text)';
     }
 
@@ -804,38 +813,38 @@ document.addEventListener('DOMContentLoaded', () => {
     pnlTableBody.innerHTML = '';
     const pnlRows = [
       {
-        concepto: 'Capital de Inversión Aportado por el Productor',
-        detalle: 'Inversión ingresada directamente por el usuario',
+        concepto: 'Capital de Inversión Aportado',
+        detalle: 'Inversión ingresada directamente por el productor',
         monto: `Q ${f.capital_inversion_q.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
         highlight: 'cost'
       },
       {
-        concepto: `Producción Total Estimada (${f.tipo_maiz})`,
-        detalle: `${terr.manzanas.toFixed(3)} mz × ${f.rendimiento_estimado_qq_mz} qq/mz`,
-        monto: `${f.produccion_total_estimada_qq} quintales (qq)`,
+        concepto: `Producción Total Estimada de Maíz ${f.tipo_maiz}`,
+        detalle: `${terr.manzanas.toFixed(3)} manzanas a ${f.rendimiento_estimado_qq_mz} qq por manzana`,
+        monto: `${f.produccion_total_estimada_qq} quintales`,
         highlight: 'info'
       },
       {
-        concepto: 'Precio Oficial de Venta MAGA al Productor',
-        detalle: `Mercados Mayoristas Oriente (Actualizado al ${f.fecha_actualizacion_maga})`,
-        monto: `Q ${f.precio_maga_qq.toFixed(2)} / qq`,
+        concepto: 'Precio Oficial de Venta MAGA',
+        detalle: `Mercados Mayoristas de Oriente al ${f.fecha_actualizacion_maga}`,
+        monto: `Q ${f.precio_maga_qq.toFixed(2)} por quintal`,
         highlight: 'info'
       },
       {
         concepto: 'Ingreso Bruto Proyectado',
-        detalle: `${f.produccion_total_estimada_qq} qq × Q ${f.precio_maga_qq.toFixed(2)}/qq`,
+        detalle: `${f.produccion_total_estimada_qq} quintales a Q ${f.precio_maga_qq.toFixed(2)} por quintal`,
         monto: `Q ${f.ingreso_bruto_q.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
         highlight: 'revenue'
       },
       {
-        concepto: 'Utilidad Neta Proyectada (Ganancia / Pérdida)',
-        detalle: `Ingreso Bruto (Q ${f.ingreso_bruto_q.toLocaleString()}) - Inversión (Q ${f.capital_inversion_q.toLocaleString()})`,
+        concepto: 'Utilidad Neta Proyectada',
+        detalle: `Ingreso Bruto de Q ${f.ingreso_bruto_q.toLocaleString(undefined, {minimumFractionDigits: 2})} menos Inversión de Q ${f.capital_inversion_q.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
         monto: `Q ${f.utilidad_neta_q.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
         highlight: f.utilidad_neta_q >= 0 ? 'profit' : 'loss'
       },
       {
-        concepto: 'Retorno sobre la Inversión (ROI)',
-        detalle: '(Utilidad Neta / Inversión) × 100%',
+        concepto: 'Retorno sobre la Inversión ROI',
+        detalle: 'Utilidad neta sobre inversión en porcentaje',
         monto: `${f.roi_pct}%`,
         highlight: f.roi_pct >= 0 ? 'profit' : 'loss'
       },
@@ -846,9 +855,9 @@ document.addEventListener('DOMContentLoaded', () => {
         highlight: 'neutral'
       },
       {
-        concepto: 'Costo de Inversión por Quintal Producido',
-        detalle: 'Inversión Total / Quintales Estimados',
-        monto: `Q ${f.inversion_por_quintal_q.toFixed(2)} / qq`,
+        concepto: 'Inversión por Quintal Producido',
+        detalle: 'Inversión total dividida entre quintales estimados',
+        monto: `Q ${f.inversion_por_quintal_q.toFixed(2)} por quintal`,
         highlight: 'neutral'
       }
     ];
@@ -870,13 +879,24 @@ document.addEventListener('DOMContentLoaded', () => {
     sensitivityTableBody.innerHTML = '';
     f.escenarios_sensibilidad.forEach(esc => {
       const tr = document.createElement('tr');
+      const cleanEscName = (esc.Escenario || '')
+        .replace(/[()]/g, '')
+        .replace(/\s*\/\s*/g, ' o ')
+        .replace(/:/g, ' •');
+
+      const rendVal = esc['Rendimiento (qq/mz)'] !== undefined ? esc['Rendimiento (qq/mz)'] : esc['Rendimiento'];
+      const prodVal = esc['Producción Total (qq)'] !== undefined ? esc['Producción Total (qq)'] : esc['Producción'];
+      const ingVal = esc['Ingreso Bruto (Q)'] !== undefined ? esc['Ingreso Bruto (Q)'] : esc['Ingreso Bruto'];
+      const utVal = esc['Utilidad Neta (Q)'] !== undefined ? esc['Utilidad Neta (Q)'] : esc['Utilidad Neta'];
+      const roiVal = esc['ROI (%)'] !== undefined ? esc['ROI (%)'] : esc['ROI'];
+
       tr.innerHTML = `
-        <td><strong>${esc.Escenario}</strong></td>
-        <td style="text-align: center;">${esc['Rendimiento (qq/mz)']}</td>
-        <td style="text-align: center;">${esc['Producción Total (qq)']}</td>
-        <td class="amount-col">Q ${esc['Ingreso Bruto (Q)'].toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-        <td class="amount-col" style="color: ${esc['Utilidad Neta (Q)'] >= 0 ? 'var(--green-main)' : 'var(--red-text)'}; font-weight: 700;">Q ${esc['Utilidad Neta (Q)'].toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-        <td class="amount-col" style="font-weight: 600;">${esc['ROI (%)']}%</td>
+        <td><strong>${cleanEscName}</strong></td>
+        <td style="text-align: center;">${rendVal} qq</td>
+        <td style="text-align: center;">${prodVal} qq</td>
+        <td class="amount-col">Q ${Number(ingVal).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+        <td class="amount-col" style="color: ${Number(utVal) >= 0 ? 'var(--green-main)' : 'var(--red-text)'}; font-weight: 700;">Q ${Number(utVal).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+        <td class="amount-col" style="font-weight: 700;">${roiVal}%</td>
       `;
       sensitivityTableBody.appendChild(tr);
     });
@@ -933,7 +953,7 @@ document.addEventListener('DOMContentLoaded', () => {
       color = 'Verde';
       accion = 'Condiciones hídricas altamente favorables. Proceder con la siembra en la densidad recomendada.';
     } else if (baseProb >= 0.40) {
-      estado = 'CONDICIONADO / ALERTA';
+      estado = 'CONDICIONADO O EN ALERTA';
       color = 'Amarillo';
       accion = 'Riesgo hídrico moderado: emplear variedades precoces o tolerantes a sequía, labranza de conservación y monitoreo de humedad.';
     }
@@ -978,7 +998,7 @@ document.addEventListener('DOMContentLoaded', () => {
         diagnostico_densidad: 'Densidad calculada adaptada al régimen hídrico de la siembra.'
       },
       financiero: {
-        fuente_oficial_maga: 'MAGA - DIPLAN / SIMPA (Mercados Mayoristas de Oriente)',
+        fuente_oficial_maga: 'MAGA SIMPA Precios Oficiales de Mercados Mayoristas de Oriente',
         fecha_actualizacion_maga: '2026-09-15',
         tipo_maiz: p.corn_type === 'amarillo' ? 'Amarillo' : 'Blanco',
         precio_maga_qq: precioMAGA,
@@ -993,7 +1013,7 @@ document.addEventListener('DOMContentLoaded', () => {
         punto_equilibrio_qq: (inversionQ / precioMAGA).toFixed(1),
         escenarios_sensibilidad: [
           {
-            "Escenario": "Optimista (Buen régimen de lluvias)",
+            "Escenario": "Optimista: Buen régimen de lluvias",
             "Rendimiento (qq/mz)": (65.0 * 1.15).toFixed(1),
             "Producción Total (qq)": (65.0 * 1.15 * mz).toFixed(1),
             "Ingreso Bruto (Q)": 65.0 * 1.15 * mz * precioMAGA,
@@ -1001,7 +1021,7 @@ document.addEventListener('DOMContentLoaded', () => {
             "ROI (%)": (((65.0 * 1.15 * mz * precioMAGA - inversionQ) / inversionQ) * 100).toFixed(1)
           },
           {
-            "Escenario": "Proyectado (Modelo Clima-Suelo)",
+            "Escenario": "Proyectado: Modelo agroclimático",
             "Rendimiento (qq/mz)": rendQqMz.toFixed(1),
             "Producción Total (qq)": prodQq.toFixed(1),
             "Ingreso Bruto (Q)": ingresoBruto,
@@ -1009,7 +1029,7 @@ document.addEventListener('DOMContentLoaded', () => {
             "ROI (%)": roi.toFixed(1)
           },
           {
-            "Escenario": "Pesimista (Déficit hídrico / canícula)",
+            "Escenario": "Pesimista: Déficit hídrico o canícula",
             "Rendimiento (qq/mz)": (65.0 * 0.45).toFixed(1),
             "Producción Total (qq)": (65.0 * 0.45 * mz).toFixed(1),
             "Ingreso Bruto (Q)": 65.0 * 0.45 * mz * precioMAGA,
@@ -1042,8 +1062,8 @@ document.addEventListener('DOMContentLoaded', () => {
         fallo_sequia: true,
         fallo_exceso: false,
         resultado_real: "FRACASO",
-        motivo_fallo: "Déficit hídrico: ETa/ETc alcanzó 0.88 (< umbral estricto 0.90)",
-        nota_discrepancia: "El modelo predijo 71.0% de probabilidad (Óptimo) según las condiciones antecedentes al día de siembra. A posteriori, la lluvia en los 60 días subsiguientes alcanzó un índice ETa/ETc de 0.88, quedando un 2% por debajo del umbral mínimo ETA_ETC_MIN = 0.90 requerido para considerar la siembra un éxito pleno."
+        motivo_fallo: "Déficit hídrico: relación hídrica alcanzó 0.88, menor al umbral estricto 0.90",
+        nota_discrepancia: "El modelo predijo 71.0% de probabilidad de siembra recomendada según las condiciones antecedentes al día de siembra. A posteriori, la lluvia en los 60 días subsiguientes alcanzó un índice de cobertura hídrica de 0.88, quedando un 2% por debajo del umbral mínimo de 0.90 requerido para considerar la siembra un éxito pleno."
       } : {
         disponible: false,
         resultado_real: "Fecha futura o periodo sin cierre de 60 días"

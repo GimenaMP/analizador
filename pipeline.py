@@ -340,16 +340,16 @@ class AgroViabilityPipeline:
 
             res_str = "VIABLE" if es_viable else "FRACASO"
             if f_seq:
-                motivo = f"Déficit hídrico: ETa/ETc alcanzó {eta_val:.2f} (< umbral estricto {self.agro_cfg.eta_etc_min:.2f})"
+                motivo = f"Déficit hídrico: relación hídrica alcanzó {eta_val:.2f}, menor al umbral estricto de {self.agro_cfg.eta_etc_min:.2f}"
             elif f_exc:
-                motivo = f"Exceso hídrico: {wl_val} días de saturación (> umbral máximo {self.agro_cfg.waterlog_max_days} días)"
+                motivo = f"Exceso hídrico: {wl_val} días de saturación, mayor al umbral máximo de {self.agro_cfg.waterlog_max_days} días"
             else:
                 motivo = "Satisfactorio: Demanda hídrica cumplida sin anegamiento crítico"
 
             nota = (
-                f"El modelo evaluó las condiciones previas a la siembra con una probabilidad pronosticada de {prob*100:.1f}% ({estado}). "
-                f"En la realidad observada durante los 60 días subsiguientes, la relación ETa/ETc fue de {eta_val:.2f} "
-                f"con {wl_val} días de anegamiento, resultando en {res_str} según el umbral ETA_ETC_MIN = {self.agro_cfg.eta_etc_min:.2f}."
+                f"El modelo evaluó las condiciones previas a la siembra con una probabilidad pronosticada de {prob*100:.1f}% con dictamen {estado}. "
+                f"En la realidad observada durante los 60 días subsiguientes, la cobertura de demanda hídrica fue de {eta_val:.2f} "
+                f"con {wl_val} días de anegamiento, resultando en {res_str} respecto al umbral mínimo de {self.agro_cfg.eta_etc_min:.2f}."
             )
 
             evaluacion_historica = {

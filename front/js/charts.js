@@ -18,11 +18,7 @@ class WaterBalanceChart {
       this.chart.destroy();
     }
 
-    const labels = (timelineData.days || []).map(d => `D${d}`);
-    const precipDaily = timelineData.precipDaily || timelineData.precip_daily_mm || [];
-    const precipAcc = timelineData.precipAcc || timelineData.precip_acc_mm || [];
-    const etcAcc = timelineData.etcAcc || timelineData.etc_acc_mm || [];
-    const soilFrac = (timelineData.soilFrac || timelineData.soil_moisture_frac || []).map(v => Math.round(v * 100));
+    const labels = timelineData.days.map(d => `D${d}`);
 
     this.chart = new Chart(ctx, {
       type: 'bar',
@@ -32,7 +28,7 @@ class WaterBalanceChart {
           {
             type: 'bar',
             label: 'Lluvia Diaria (mm)',
-            data: precipDaily,
+            data: timelineData.precipDaily,
             backgroundColor: 'rgba(56, 189, 248, 0.45)',
             borderColor: '#0284C7',
             borderWidth: 1,
@@ -43,7 +39,7 @@ class WaterBalanceChart {
           {
             type: 'line',
             label: 'Lluvia Acumulada (mm)',
-            data: precipAcc,
+            data: timelineData.precipAcc,
             borderColor: '#0369A1',
             backgroundColor: 'rgba(3, 105, 161, 0.05)',
             borderWidth: 2.2,
@@ -55,7 +51,7 @@ class WaterBalanceChart {
           {
             type: 'line',
             label: 'Demanda Hídrica ETc Acum. (mm)',
-            data: etcAcc,
+            data: timelineData.etcAcc,
             borderColor: '#DC2626',
             borderWidth: 2,
             borderDash: [5, 4],
@@ -67,7 +63,7 @@ class WaterBalanceChart {
           {
             type: 'line',
             label: 'Humedad Útil Suelo (%)',
-            data: soilFrac,
+            data: timelineData.soilFrac.map(v => Math.round(v * 100)),
             borderColor: '#16A34A',
             borderWidth: 2.2,
             tension: 0.3,

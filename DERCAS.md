@@ -97,7 +97,7 @@ El objetivo central es mitigar el riesgo climático asociado a la variabilidad d
 * **Detalle Técnico:**
   * Rendimiento potencial estimado en quintales ($qq$) por manzana o hectárea según la viabilidad del modelo agroclimático.
   * Costos desglosados de producción: preparación de suelo, semilla, fertilización (fórmula y urea), control fitosanitario, mano de obra y cosecha.
-  * Precio de venta oficial del quintal de maíz blanco/amarillo tomado de los reportes del Sistema de Información de Mercados Agrícolas (SIMPA/DIPLAN - MAGA).
+  * Precio de venta oficial del quintal de maíz blanco, de primera (La Terminal: Q 235.00), extraído en tiempo real mediante scraping de los reportes oficiales del MAGA (https://precios.maga.gob.gt/diarios/diarios.html).
   * Indicadores de rentabilidad: Ingreso Bruto, Costo Total, Utilidad Neta, Margen de Utilidad (\%), Relación Beneficio/Costo ($B/C$) y Punto de Equilibrio ($qq$).
 * **Criterios de Aceptación:**
   * CA-07.1: Mostrar claramente la fecha exacta de la última actualización de precios del MAGA (ej. `"Precios oficiales MAGA - Actualizado al: 2026-09-15"`).
@@ -137,9 +137,14 @@ El objetivo central es mitigar el riesgo climático asociado a la variabilidad d
 ### RNF-02: Usabilidad e Identidad Visual Moderna
 * **Descripción:** La interfaz de usuario debe ser altamente intuitiva, moderna y atractiva, incorporando una paleta de colores representativa del maíz y del departamento de Jutiapa, así como transiciones fluidas y elementos visuales llamativos, descartando por completo diseños rígidos o de estilo anticuado (tipo *vicoder*).
 * **Especificación de Diseño:**
-  * Colores temáticos: Tonos maíz dorado (`#F59E0B`, `#D97706`), verde agrícola (`#10B981`, `#047857`), tierra fértil (`#78350F`) y fondos neutros modernos estilo *dark/light mode* con tarjetas de superficie limpias y elevación sutil.
+  * Colores temáticos: Tonos maíz dorado (`#F59E0B`, `#D97706`), verde agrícola (`#10B981`, `#047857`), tierra fértil (`#78350F`) y fondos neutros modernos estilo  con tarjetas de superficie limpias y elevación sutil.
   * Tipografía legible y contemporánea (Inter, Outfit o Roboto).
   * Microinteracciones con estados de *hover*, animaciones suaves y retroalimentación interactiva inmediata.
+  * tomar en cuenta la skill de .claudio especificamente para dise;o de frontend
+  * tomar en cuenta la slikk .gemini especificamente para la logica del frontend
+  * tomar en cuenta la eskill agent para la orquestacion del frontend y las demas skills
+  * tomar en cuenta la eskill .meta para la infraestructura
+
 
 ---
 
@@ -169,12 +174,13 @@ El objetivo central es mitigar el riesgo climático asociado a la variabilidad d
 | **RF-04** | `reporting.visualizer` | Serie temporal de balance hídrico | Gráfica de precipitación, $ET_c$ y suelo |
 | **RF-05** | `agronomy_economics.geometry` | Ancho y largo del terreno ($m$) | Área en $m^2, mz, ha$ y plano a escala |
 | **RF-06** | `agronomy_economics.density` | Área y nivel de viabilidad | Densidad plantas/$m^2$ y total semillas |
-| **RF-07** | `agronomy_economics.finances`| Capital disponible y producción esperada| Tabla de Pérdidas y Ganancias (P&L) |
+| **RF-07** | `agronomy_economics.finances`| Capital disponible para que el usuario lo ponga, el monto que el tenga de capital,  y producción esperada| Tabla de Pérdidas y Ganancias (P&L) |
 | **RF-08** | `reporting.pdf_exporter` | Resultados del pipeline integral | Archivo descargable `.pdf` maquetado |
 | **RNF-01** | Arquitectura del Sistema | Acceso HTTP directo | Sesión anónima y libre de credenciales |
 | **RNF-02** | Frontend & UI Styling | Tokens de diseño temático | Interfaz moderna inspirada en Jutiapa/Maíz |
 | **RNF-03** | Pipeline Asíncrono + Caché | Consultas a Open-Meteo y NOAA | Notificación de progreso y caché local |
 | **RNF-04** | Motor de Documentos PDF | Plantilla de maquetación estructurada | PDF con márgenes estándar sin colisiones |
+* evitar inyeccion de informacion o alguna forma de modificacion por algun hacker, vulnerabilidad o exploit
 
 ---
 

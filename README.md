@@ -110,7 +110,7 @@ python main.py --date 2026-06-01 --lat 14.267 --lon -90.133 --width 100 --length
 * `--width`: Ancho del terreno en metros (por defecto: `100.0`).
 * `--length`: Largo del terreno en metros (por defecto: `70.0`).
 * `--capital`: Capital disponible para la siembra en Quetzales (por defecto: `6500.0`).
-* `--corn-type`: Variedad de maíz (`blanco` o `amarillo`).
+* `--corn-type`: Variedad de maíz (`blanco` de primera).
 * `--force-refresh`: Fuerza la descarga de datos desde Open-Meteo y NOAA ignorando la caché.
 * `--no-pdf`: Omite la generación del archivo PDF.
 

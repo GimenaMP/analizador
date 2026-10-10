@@ -22,7 +22,7 @@ def main():
     parser.add_argument("--width", type=float, default=100.0, help="Ancho del terreno en metros (si es rectangular)")
     parser.add_argument("--length", type=float, default=70.0, help="Largo del terreno en metros (si es rectangular)")
     parser.add_argument("--capital", type=float, default=6500.0, help="Capital de inversión aportado para la siembra (Quetzales - Q)")
-    parser.add_argument("--corn-type", type=str, default="blanco", choices=["blanco", "amarillo"], help="Tipo de maíz")
+    parser.add_argument("--corn-type", type=str, default="blanco", choices=["blanco"], help="Tipo de maíz (Blanco, de primera)")
     parser.add_argument("--force-refresh", action="store_true", help="Forzar re-descarga de datos ignorando la caché")
     parser.add_argument("--no-pdf", action="store_true", help="Omitir la generación del archivo PDF")
 

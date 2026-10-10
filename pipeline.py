@@ -27,6 +27,7 @@ from config.settings import (
     PATH_CONFIG,
 )
 from core.data_fetcher import fetch_weather, fetch_macro
+from core.maga_scraper import fetch_maga_white_corn_price
 from core.soil_balance import SoilProfile, build_dataset
 from core.models import (
     make_xgb,
@@ -296,13 +297,22 @@ class AgroViabilityPipeline:
         densidad = calculate_sowing_density(terrain, prob, color)
 
         # 7. Proyección Financiera con Precios Oficiales MAGA (RF-07)
-        # Utiliza directamente el capital aportado por el agricultor sin presupuestos desglosados no solicitados
+        # Actualización automática mediante scraper oficial del MAGA (La Terminal)
+        try:
+            live_maga = fetch_maga_white_corn_price(timeout_sec=3)
+            if live_maga and live_maga.get("precio"):
+                self.maga_cfg.precio_qq_maiz_blanco = float(live_maga["precio"])
+                self.maga_cfg.fecha_actualizacion = str(live_maga.get("fecha", "09/10/2026"))
+                self.maga_cfg.fuente_oficial = f"MAGA DIPLAN - Precios Diarios ({live_maga.get('mercado', 'La Terminal')})"
+        except Exception:
+            pass
+
         financiero = calculate_financial_projection(
             terrain=terrain,
             viability_prob=prob,
             capital_inversion=capital_disponible_q,
             maga_cfg=self.maga_cfg,
-            tipo_maiz=tipo_maiz,
+            tipo_maiz="blanco",
         )
 
         # Criterios agrometeorológicos aplicados (exactos del algoritmo principal)

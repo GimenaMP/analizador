@@ -151,6 +151,8 @@ body {
   pointer-events: none;
   z-index: -1;
   overflow: hidden;
+  contain: strict;
+  transform: translate3d(0, 0, 0);
 }
 
 .ambient-blurred-image {
@@ -160,8 +162,10 @@ body {
   width: 120%;
   height: 650px;
   object-fit: cover;
-  filter: blur(70px) saturate(130%);
+  filter: blur(50px) saturate(130%);
   opacity: 0.16;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
 }
 
 .blur-glow {
@@ -1422,7 +1426,7 @@ body {
   transform: scale(0.96);
 }
 
-/* Select de Variedad */
+/* Select de Variedad / Distintivo Fijo */
 .select-input-clean {
   width: 100%;
   background: #FFFFFF;
@@ -1441,6 +1445,31 @@ body {
 .select-input-clean:focus {
   border-color: var(--green-main);
   box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
+}
+
+.variety-fixed-pill {
+  width: 100%;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-medium);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.02);
+}
+
+.variety-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #16A34A;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2);
+  flex-shrink: 0;
 }
 
 /* Chips de Ubicación Micro-regional */

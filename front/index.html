@@ -13,9 +13,6 @@
 
   <!-- Estilos Principales -->
   <link rel="stylesheet" href="css/style.css">
-
-  <!-- Chart.js para visualización de balance hídrico -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -81,15 +78,15 @@
           </div>
 
           <div class="stat-cell">
-            <span class="stat-number">Q 220.00</span>
-            <span class="stat-label">Precio oficial MAGA / quintal</span>
+            <span class="stat-number" id="heroMagaPriceStat">Q 235.00</span>
+            <span class="stat-label">Precio oficial MAGA (La Terminal)</span>
           </div>
         </div>
       </div>
 
       <!-- Columna Fotográfica: Desplazamiento reactivo desde la derecha -->
       <div class="hero-photo-wrap hero-photo-slider" id="heroPhotoWrap">
-        <img src="img/green_cornfield_landscape.jpg" alt="Parcelas y cultivo de maíz en valles de Jutiapa" class="hero-photo">
+        <img src="img/green_cornfield_landscape.jpg" alt="Parcelas y cultivo de maíz en valles de Jutiapa" class="hero-photo" fetchpriority="high" decoding="async">
       </div>
     </section>
 
@@ -155,7 +152,7 @@
               <div class="slide-card-content">
                 <h3 class="slide-card-title">Precios Mayoristas MAGA &amp; P&amp;L</h3>
                 <p class="slide-card-desc">
-                  Evaluación financiera con cotizaciones oficiales del SIMPA para Mercados de Oriente (Q 220.00/qq), punto de equilibrio y proyección de rentabilidad neta por manzana.
+                  Evaluación financiera con cotizaciones oficiales en tiempo real del SIMPA (La Terminal: Q 235.00/qq), punto de equilibrio y proyección de rentabilidad neta por manzana para Maíz Blanco.
                 </p>
               </div>
             </article>
@@ -585,11 +582,12 @@
               </div>
 
               <div class="input-cell">
-                <label for="cornType" class="field-label-tag">Variedad de Maíz</label>
-                <select id="cornType" class="select-input-clean">
-                  <option value="blanco">Maíz Blanco Comercial</option>
-                  <option value="amarillo">Maíz Amarillo Comercial</option>
-                </select>
+                <label class="field-label-tag">Cultivo y Variedad Evaluada</label>
+                <div class="variety-fixed-pill">
+                  <span class="variety-dot"></span>
+                  <span class="variety-text">Maíz blanco, de primera (La Terminal)</span>
+                </div>
+                <input type="hidden" id="cornType" value="blanco">
               </div>
             </div>
 
@@ -961,10 +959,11 @@
 
   </div>
 
-  <!-- Scripts Modulares -->
-  <script src="js/terrain.js"></script>
-  <script src="js/charts.js"></script>
-  <script src="js/app.js"></script>
+  <!-- Scripts Modulares Optimizados (No Bloqueantes) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  <script src="js/terrain.js" defer></script>
+  <script src="js/charts.js" defer></script>
+  <script src="js/app.js" defer></script>
 
 </body>
 </html>

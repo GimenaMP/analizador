@@ -52,6 +52,26 @@ class AgroServerHandler(SimpleHTTPRequestHandler):
             
         return str(FRONT_DIR / rel_path)
 
+    def do_GET(self):
+        """Maneja peticiones GET a la API y archivos estáticos."""
+        if self.path.startswith("/api/maga-price"):
+            try:
+                from core.maga_scraper import fetch_maga_white_corn_price
+                data = fetch_maga_white_corn_price()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps(data).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+            return
+
+        super().do_GET()
+
     def do_POST(self):
         """Maneja llamadas a la API agrometeorológica y financiera."""
         if self.path == "/api/analyze":

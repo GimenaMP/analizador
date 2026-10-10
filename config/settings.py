@@ -27,7 +27,7 @@ class GeoConfig:
 @dataclass(frozen=True)
 class AgroConfig:
     """Parámetros fenológicos y agronómicos del cultivo de maíz."""
-    sowing_months: List[int] = field(default_factory=lambda: [5, 6, 7, 8, 9, 10, 11, 12])
+    sowing_months: List[int] = field(default_factory=lambda: [1,2,3,4,5, 6, 7, 8, 9, 10, 11, 12])
     window_days: int = 60
     total_cycle_days: int = 120
     spinup_days: int = 365
@@ -90,12 +90,11 @@ class MagaPriceConfig:
     Precios oficiales de mercado de granos básicos en Guatemala.
     Fuente: Ministerio de Agricultura, Ganadería y Alimentación (MAGA) - DIPLAN / SIMPA.
     """
-    fuente_oficial: str = "MAGA - DIPLAN / SIMPA (Mercados Mayoristas de Oriente)"
-    fecha_actualizacion: str = "2026-09-15"
+    fuente_oficial: str = "MAGA - DIPLAN / SIMPA (Mercado Mayorista La Terminal)"
+    fecha_actualizacion: str = "2026-10-09"
     
     # Precios de referencia por quintal (qq) en Quetzales (Q)
-    precio_qq_maiz_blanco: float = 220.0
-    precio_qq_maiz_amarillo: float = 210.0
+    precio_qq_maiz_blanco: float = 235.0
     
     # Costos promedio de producción de maíz tradicional/tecnificado por manzana (Q/mz)
     costo_preparacion_suelo_mz: float = 650.0
@@ -118,7 +117,7 @@ class SemaforoConfig:
       - prob_alerta_min (0.40) <= prob < 0.70: CONDICIONADO / ALERTA (Amarillo)
       - prob < prob_alerta_min (0.40): NO SEMBRAR (Rojo, tasa de fracaso > 89%)
     """
-    prob_optimo_min: float = 0.70
+    prob_optimo_min: float = 0.80
     prob_alerta_min: float = 0.40
 
 

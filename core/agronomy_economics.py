@@ -227,12 +227,10 @@ def calculate_financial_projection(
     Toma directamente el capital de inversión ingresado por el usuario,
     sin agregar presupuestos desglosados no solicitados.
     Utiliza los precios oficiales del maíz del MAGA con fecha de actualización explícita.
+    Exclusivamente para Maíz Blanco de primera.
     """
     mz = terrain.manzanas
-    precio_qq = (
-        maga_cfg.precio_qq_maiz_blanco if tipo_maiz.lower() == "blanco"
-        else maga_cfg.precio_qq_maiz_amarillo
-    )
+    precio_qq = maga_cfg.precio_qq_maiz_blanco
 
     # 1. Proyección de Rendimiento según viabilidad climática
     # Con viabilidad óptima (prob=1.0) se alcanza el 100% del rendimiento base (65 qq/mz).

@@ -1,9 +1,11 @@
 /**
  * Vercel Serverless Function: /api/analyze
  * Ejecuta el cálculo agrometeorológico, balance hídrico, física de suelos y modelo financiero P&L oficial del MAGA.
+ * Exclusivamente para Maíz Blanco de primera (La Terminal) con precios scrapeados en tiempo real.
  */
+import { getLiveMagaPrice } from './maga-price.js';
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
   // Configuración de encabezados CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -33,7 +35,11 @@ export default function handler(req, res) {
     const width = parseFloat(payload.width) || sides[0] || 100;
     const length = parseFloat(payload.length) || sides[1] || 70;
     const capitalInversion = parseFloat(payload.capital) || 7200;
-    const cornType = (payload.corn_type || 'blanco').toLowerCase();
+
+    // Obtener precio en tiempo real mediante scraper oficial del MAGA
+    const magaData = await getLiveMagaPrice();
+    const precioMAGA = magaData.precio || 235.0;
+    const fechaMAGA = magaData.fecha || '09/10/2026';
 
     // 1. Cálculo Geométrico del Terreno (RF-05)
     let areaM2 = 7000;
@@ -63,15 +69,12 @@ export default function handler(req, res) {
     let faseEnso = 'Neutral';
 
     if (month >= 5 && month <= 7) {
-      // Primera: Mayor probabilidad histórica
       baseProb = 0.642;
       faseEnso = 'Neutral / Transición';
     } else if (month >= 8 && month <= 10) {
-      // Postrera: Lluvias de cierre
       baseProb = 0.584;
       faseEnso = 'La Niña Débil';
     } else {
-      // Fuera de ventana agroclimática habitual
       baseProb = 0.085;
       faseEnso = 'Neutral';
     }
@@ -100,8 +103,7 @@ export default function handler(req, res) {
     const rowDistance = semaforoColor === 'Verde' ? 80.0 : semaforoColor === 'Amarillo' ? 85.0 : 90.0;
     const plantDistance = semaforoColor === 'Verde' ? 22.0 : semaforoColor === 'Amarillo' ? 27.0 : 31.0;
 
-    // 4. Proyección Financiera Oficial MAGA (RF-07)
-    const precioMAGA = cornType === 'amarillo' ? 210.0 : 220.0;
+    // 4. Proyección Financiera Oficial MAGA (RF-07) - Exclusivo Maíz Blanco
     const factorRend = 0.40 + 0.60 * baseProb;
     const rendQqMz = +(65.0 * factorRend).toFixed(1);
     const prodQq = +(rendQqMz * manzanas).toFixed(1);
@@ -150,9 +152,9 @@ export default function handler(req, res) {
         diagnostico_densidad: 'Densidad calculada adaptada al régimen hídrico de la siembra en Jutiapa.'
       },
       financiero: {
-        fuente_oficial_maga: 'MAGA SIMPA Precios Oficiales de Mercados Mayoristas de Oriente',
-        fecha_actualizacion_maga: '2026-09-15',
-        tipo_maiz: cornType === 'amarillo' ? 'Amarillo' : 'Blanco',
+        fuente_oficial_maga: `MAGA SIMPA Precios Mayoristas (${magaData.mercado})`,
+        fecha_actualizacion_maga: fechaMAGA,
+        tipo_maiz: 'Blanco (de primera)',
         precio_maga_qq: precioMAGA,
         area_manzanas: +manzanas.toFixed(3),
         rendimiento_estimado_qq_mz: rendQqMz,

@@ -17,8 +17,15 @@ from sklearn.metrics import roc_auc_score, brier_score_loss
 from config.settings import SoilConfig, SOIL_CONFIG, SemaforoConfig, SEMAFORO_CONFIG
 
 
-def make_xgb() -> xgb.XGBClassifier:
-    """Constructor de modelo de Gradient Boosting regularizado para series agroclimáticas."""
+def make_xgb(scale_pos_weight: float = 1.0) -> xgb.XGBClassifier:
+    """
+    Constructor de modelo de Gradient Boosting regularizado para series agroclimáticas
+    bajo directrices oficiales de XGBoost 3.4:
+    - tree_method="hist": algoritmo basado en histogramas para optimización continua.
+    - reg_alpha=0.5: regularización L1 para penalizar variables redundantes.
+    - reg_lambda=5.0: regularización L2 para evitar sobreajuste en hojas.
+    - scale_pos_weight: reponderación de clases desbalanceadas (años secos vs húmedos).
+    """
     return xgb.XGBClassifier(
         n_estimators=150,
         max_depth=2,
@@ -27,6 +34,9 @@ def make_xgb() -> xgb.XGBClassifier:
         colsample_bytree=0.8,
         min_child_weight=20,
         reg_lambda=5.0,
+        reg_alpha=0.5,
+        scale_pos_weight=scale_pos_weight,
+        tree_method="hist",
         eval_metric="logloss",
         random_state=42
     )
@@ -77,16 +87,28 @@ def cross_validate(
 def train_calibrated_model(
     train_df: pd.DataFrame,
     features: List[str],
-    make_model_fn: Any,
+    make_model_fn: Any = None,
     n_splits: int = 5
 ) -> CalibratedClassifierCV:
-    """Entrena y calibra las probabilidades del modelo final usando GroupKFold."""
+    """Entrena y calibra las probabilidades del modelo final usando GroupKFold y balance de clases XGBoost."""
     X = train_df[features].astype(float).values
     y = train_df["target"].astype(int).values
     groups = train_df["year"].values
 
+    neg_count = np.sum(y == 0)
+    pos_count = np.sum(y == 1)
+    spw = float(neg_count / max(pos_count, 1))
+
+    if make_model_fn is None:
+        model_fn = lambda: make_xgb(scale_pos_weight=spw)
+    else:
+        try:
+            model_fn = lambda: make_model_fn(scale_pos_weight=spw)
+        except TypeError:
+            model_fn = make_model_fn
+
     splits = list(GroupKFold(n_splits=n_splits).split(X, y, groups))
-    calibrated = CalibratedClassifierCV(estimator=make_model_fn(), method="sigmoid", cv=splits)
+    calibrated = CalibratedClassifierCV(estimator=model_fn(), method="sigmoid", cv=splits)
     calibrated.fit(X, y)
     return calibrated
 

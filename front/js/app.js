@@ -509,7 +509,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (inputSowingDate) {
-    inputSowingDate.addEventListener('change', () => updateSeasonBadge(inputSowingDate.value));
+    inputSowingDate.addEventListener('change', () => {
+      if (inputSowingDate.value > '2026-10-31') inputSowingDate.value = '2026-10-31';
+      if (inputSowingDate.value < '2024-05-01') inputSowingDate.value = '2024-05-01';
+      updateSeasonBadge(inputSowingDate.value);
+    });
     updateSeasonBadge(inputSowingDate.value);
   }
 
@@ -1020,6 +1024,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const weatherMap = {};
     const earliestNeeded = new Date(sDate.getTime() - 35 * 24 * 60 * 60 * 1000);
     const earliestStr = earliestNeeded.toISOString().split('T')[0];
+    const simEnd = new Date(sDate.getTime() + 65 * 24 * 60 * 60 * 1000);
+    const simEndStr = simEnd.toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
 
     try {
       const liveUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_sum,et0_fao_evapotranspiration,temperature_2m_mean&timezone=America/Guatemala&past_days=92&forecast_days=14`;
@@ -1036,19 +1044,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      if (earliestStr < '2026-07-10' && earliestStr >= '2026-01-01') {
-        const arcUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${earliestStr}&end_date=2026-07-09&daily=precipitation_sum,et0_fao_evapotranspiration&timezone=America/Guatemala`;
+      if (earliestStr < yesterdayStr) {
+        const arcEndDate = simEndStr < yesterdayStr ? simEndStr : yesterdayStr;
+        const arcUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${earliestStr}&end_date=${arcEndDate}&daily=precipitation_sum,et0_fao_evapotranspiration&timezone=America/Guatemala`;
         const arcRes = await fetch(arcUrl);
         if (arcRes.ok) {
           const arcData = await arcRes.json();
           if (arcData.daily && arcData.daily.time) {
             arcData.daily.time.forEach((t, i) => {
-              if (!weatherMap[t]) {
-                weatherMap[t] = {
-                  p: arcData.daily.precipitation_sum[i] || 0,
-                  et0: arcData.daily.et0_fao_evapotranspiration[i] || 3.8
-                };
-              }
+              weatherMap[t] = {
+                p: arcData.daily.precipitation_sum[i] || 0,
+                et0: arcData.daily.et0_fao_evapotranspiration[i] || 3.8
+              };
             });
           }
         }
@@ -1083,21 +1090,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const weatherMap = await fetchLiveWeatherClient(p.lat || 14.267, p.lon || -90.133, sDate);
 
     function getClimatologyDaily(doy) {
-      let pr = 0.3, et0 = 3.8;
+      let baseP = 0.3, et0 = 3.8;
       if (doy >= 125 && doy <= 304) {
-        if (doy >= 185 && doy <= 215) { pr = 5.2; et0 = 4.2; }
-        else if (doy >= 244 && doy <= 273) { pr = 11.4; et0 = 3.6; }
+        if (doy >= 185 && doy <= 215) { baseP = 5.2; et0 = 4.2; }
+        else if (doy >= 244 && doy <= 273) { baseP = 11.4; et0 = 3.6; }
         else if (doy >= 274 && doy <= 304) {
           const frac = (doy - 274) / 30.0;
-          pr = Math.max(0.8, 12.0 - frac * 10.5);
+          baseP = Math.max(0.8, 12.0 - frac * 10.5);
           et0 = 3.7;
-        } else { pr = 8.5; et0 = 3.9; }
+        } else { baseP = 8.5; et0 = 3.9; }
       } else if (doy >= 305 && doy <= 334) {
-        pr = 1.4; et0 = 3.6;
+        baseP = 1.4; et0 = 3.6;
       } else {
-        pr = 0.2; et0 = 4.1;
+        baseP = 0.2; et0 = 4.1;
       }
-      return { p: pr, et0 };
+
+      const pseudoWave = Math.sin(doy * 1.85) * 0.7 + Math.cos(doy * 0.92) * 0.6;
+      let pr = 0;
+      if (baseP > 1.0) {
+        pr = pseudoWave > -0.2 ? Math.max(0, baseP * (1.1 + pseudoWave)) : (pseudoWave > -0.6 ? 1.2 : 0.0);
+      } else {
+        pr = pseudoWave > 0.4 ? baseP * 2.2 : 0.0;
+      }
+      return { p: +pr.toFixed(1), et0 };
     }
 
     function getWeatherForDate(dt, dOfYear) {

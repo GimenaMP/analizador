@@ -562,7 +562,8 @@
                 <label for="sowingDate" class="form-label-title" style="margin-bottom: 0;">Fecha Tentativa de Siembra</label>
                 <span id="seasonBadge" class="season-tag primera">Época de Primera</span>
               </div>
-              <input type="date" id="sowingDate" class="text-input-field" value="2026-06-01" required style="margin-top: 6px;">
+              <input type="date" id="sowingDate" class="text-input-field" value="2026-06-01" min="2024-05-01" max="2026-10-31" required style="margin-top: 6px;">
+              <span class="field-hint" style="font-size: 0.74rem; color: var(--text-muted); display: block; margin-top: 4px;">Rango de predicción disponible: 01/05/2024 al 31/10/2026 (cierre de temporada de lluvias y postrera).</span>
             </div>
 
             <!-- Capital y Variedad -->

@@ -864,6 +864,14 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       downloadReportPDF(data);
     };
+
+    const btnPrintDirect = document.getElementById('btnPrintPdfDirect');
+    if (btnPrintDirect) {
+      btnPrintDirect.onclick = (e) => {
+        e.preventDefault();
+        window.print();
+      };
+    }
   }
 
   /**
@@ -884,6 +892,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnDownloadPdf.style.pointerEvents = 'none';
     btnDownloadPdf.style.opacity = '0.7';
 
+    const prevScrollY = window.scrollY;
     let clone = null;
     try {
       if (typeof html2pdf !== 'undefined') {
@@ -900,8 +909,9 @@ document.addEventListener('DOMContentLoaded', () => {
         clone.style.background = '#FFFFFF';
         clone.style.color = '#0F172A';
         clone.style.position = 'absolute';
-        clone.style.left = '-9999px';
-        clone.style.top = '0';
+        clone.style.left = '0px';
+        clone.style.top = '0px';
+        clone.style.zIndex = '99999';
         clone.style.boxSizing = 'border-box';
 
         // 2. Remover barra de exportación duplicada en el clon
@@ -962,6 +972,10 @@ document.addEventListener('DOMContentLoaded', () => {
         clone.insertBefore(header, clone.firstChild);
 
         document.body.appendChild(clone);
+        window.scrollTo(0, 0);
+
+        // Breve pausa para asegurar pintura del DOM y las imágenes PNG
+        await new Promise(r => setTimeout(r, 200));
 
         const opt = {
           margin: [8, 8, 8, 8],
@@ -973,7 +987,8 @@ document.addEventListener('DOMContentLoaded', () => {
             logging: false,
             backgroundColor: '#FFFFFF',
             scrollY: 0,
-            scrollX: 0
+            scrollX: 0,
+            windowWidth: 800
           },
           jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
           pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
@@ -990,6 +1005,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (clone && clone.parentNode) {
         clone.parentNode.removeChild(clone);
       }
+      window.scrollTo(0, prevScrollY);
       if (btnText) btnText.textContent = originalText;
       btnDownloadPdf.style.pointerEvents = 'auto';
       btnDownloadPdf.style.opacity = '1';

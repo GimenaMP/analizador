@@ -499,9 +499,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (month >= 5 && month <= 7) {
       seasonBadge.textContent = 'Época de Primera';
       seasonBadge.className = 'season-tag primera';
-    } else if (month >= 8 && month <= 10) {
+    } else if (month >= 8 && month <= 9) {
       seasonBadge.textContent = 'Época de Postrera';
       seasonBadge.className = 'season-tag postrera';
+    } else if (month === 10) {
+      seasonBadge.textContent = 'Cierre de Postrera • Alto Riesgo';
+      seasonBadge.className = 'season-tag alerta';
     } else {
       seasonBadge.textContent = 'Fuera de Ventana • Riego Obligatorio';
       seasonBadge.className = 'season-tag fuera';
@@ -869,8 +872,136 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function simulateLocally(p) {
     const sDate = new Date(p.date + 'T00:00:00');
-    const month = sDate.getMonth() + 1;
-    
+    const startYear = new Date(sDate.getFullYear(), 0, 1);
+    const dayOfYear = Math.floor((sDate - startYear) / (24 * 60 * 60 * 1000)) + 1;
+    const doySin = Math.sin((2 * Math.PI * dayOfYear) / 365.25);
+    const doyCos = Math.cos((2 * Math.PI * dayOfYear) / 365.25);
+
+    // Parámetros edáficos Saxton & Rawls calibrados para suelo Franco-Arcillo-Arenoso de Jutiapa
+    const TAW_MM = 105.6;
+    const RAW_MM = 58.08;
+    const EXCESS_THRESHOLD = 15.0;
+    const MAX_WATERLOG_DAYS = 8;
+
+    // Función climatológica diaria para Jutiapa (ERA5)
+    function getDayWeather(doy) {
+      let rain = 0.3;
+      let et0 = 3.8;
+      if (doy >= 125 && doy <= 304) {
+        if (doy >= 185 && doy <= 215) {
+          rain = 5.2; et0 = 4.2;
+        } else if (doy >= 244 && doy <= 273) {
+          rain = 11.4; et0 = 3.6;
+        } else if (doy >= 274 && doy <= 304) {
+          const frac = (doy - 274) / 30.0;
+          rain = Math.max(0.8, 12.0 - frac * 10.5);
+          et0 = 3.7;
+        } else {
+          rain = 8.5; et0 = 3.9;
+        }
+      } else if (doy >= 305 && doy <= 334) {
+        rain = 1.4; et0 = 3.6;
+      } else {
+        rain = 0.2; et0 = 4.1;
+      }
+      return { rain, et0 };
+    }
+
+    // Cálculo antecedente de lluvia y balance de los 30 días previos
+    let p15d = 0;
+    let p30d = 0;
+    let et030d = 0;
+    let dryStreak = 0;
+
+    for (let back = 30; back >= 1; back--) {
+      const pastDoy = ((dayOfYear - back - 1 + 365) % 365) + 1;
+      const { rain, et0 } = getDayWeather(pastDoy);
+      p30d += rain;
+      et030d += et0;
+      if (back <= 15) p15d += rain;
+      if (rain < 1.5) dryStreak++;
+      else dryStreak = 0;
+    }
+
+    const bal30d = p30d - et030d;
+    const initialSoilFrac = Math.min(1.0, Math.max(0.12, (p30d / Math.max(et030d, 1.0)) * 0.70));
+
+    // Inferencia con el modelo estadístico entrenado sobre 45 años de ERA5
+    const normVal = (v, mean, scale) => (v - mean) / scale;
+    const zScore = -1.8617 +
+      (-0.1376) * normVal(p15d, 71.26, 80.60) +
+      (2.1442) * normVal(p30d, 142.49, 145.58) +
+      (-1.8859) * normVal(bal30d, 20.65, 156.26) +
+      (-0.1059) * normVal(initialSoilFrac, 0.576, 0.422) +
+      (-1.5180) * normVal(dryStreak, 11.43, 21.76) +
+      (0.3778) * normVal(doySin, 0.0069, 0.7067) +
+      (-1.2634) * normVal(doyCos, -0.0012, 0.7075);
+
+    let calculatedProb = 1.0 / (1.0 + Math.exp(-zScore));
+    calculatedProb = Math.max(0.05, Math.min(0.92, calculatedProb));
+
+    // Simulación física diaria durante la ventana fenológica de 60 días
+    const timelineDays = [];
+    const timelinePrecipDaily = [];
+    const timelinePrecipAcc = [];
+    const timelineEtcAcc = [];
+    const timelineSoilFrac = [];
+
+    let currentS = initialSoilFrac * TAW_MM;
+    let accP = 0;
+    let accEtc = 0;
+    let accEta = 0;
+    let waterlogCount = 0;
+
+    for (let d = 1; d <= 60; d++) {
+      const simDoy = ((dayOfYear + d - 1) % 365) + 1;
+      const { rain, et0 } = getDayWeather(simDoy);
+
+      let kc = 0.40;
+      if (d > 15 && d <= 35) {
+        kc = 0.40 + ((d - 15) / 20.0) * (1.15 - 0.40);
+      } else if (d > 35) {
+        kc = 1.15;
+      }
+
+      const etc = kc * et0;
+      const ks = (TAW_MM - currentS) <= RAW_MM ? 1.0 : Math.max(0.0, currentS / Math.max(TAW_MM - RAW_MM, 1e-4));
+      const eta = etc * ks;
+
+      const sNext = currentS + rain - eta;
+      if (sNext > TAW_MM) {
+        if ((sNext - TAW_MM) >= EXCESS_THRESHOLD) {
+          waterlogCount++;
+        }
+        currentS = TAW_MM;
+      } else if (sNext < 0) {
+        currentS = 0;
+      } else {
+        currentS = sNext;
+      }
+
+      accP += rain;
+      accEtc += etc;
+      accEta += eta;
+
+      timelineDays.push(d);
+      timelinePrecipDaily.push(+rain.toFixed(1));
+      timelinePrecipAcc.push(+accP.toFixed(1));
+      timelineEtcAcc.push(+accEtc.toFixed(1));
+      timelineSoilFrac.push(+(currentS / TAW_MM).toFixed(2));
+    }
+
+    const etaEtcRatio = accEta / Math.max(accEtc, 1e-4);
+
+    // Ajuste de probabilidad por déficit hídrico o anegamiento severo
+    if (etaEtcRatio < 0.90) {
+      calculatedProb = Math.min(calculatedProb, 0.35 * (etaEtcRatio / 0.90));
+    }
+    if (waterlogCount > MAX_WATERLOG_DAYS) {
+      calculatedProb = Math.min(calculatedProb, 0.28);
+    }
+
+    // Geometría real del terreno
     let areaM2 = 7000;
     if (p.shape_type === 'triangulo' && p.sides && p.sides.length >= 3) {
       const a = p.sides[0], b = p.sides[1], c = p.sides[2];
@@ -885,33 +1016,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const mz = areaM2 / 7000;
     const ha = areaM2 / 10000;
 
-    let baseProb = 0.633;
-    let faseEnso = 'Neutral';
-
-    if (month >= 5 && month <= 7) {
-      baseProb = 0.64;
-    } else if (month >= 8 && month <= 10) {
-      baseProb = 0.58;
-    } else {
-      baseProb = 0.08;
-    }
-
     let estado = 'NO SEMBRAR';
     let color = 'Rojo';
-    let accion = 'Riesgo alto de fracaso hídrico por sequía o canícula prolongada.';
+    let accion = 'Riesgo crítico de fracaso hídrico por cese prematuro de lluvias en floración o anegamiento inicial. Se recomienda posponer o disponer de riego.';
 
-    if (baseProb >= 0.70) {
+    if (calculatedProb >= 0.70) {
       estado = 'ÓPTIMO';
       color = 'Verde';
-      accion = 'Condiciones hídricas altamente favorables. Proceder con la siembra en la densidad recomendada.';
-    } else if (baseProb >= 0.40) {
+      accion = 'Condiciones hídricas altamente favorables (cobertura hídrica > 90%). Proceder con la siembra en la densidad recomendada.';
+    } else if (calculatedProb >= 0.40) {
       estado = 'CONDICIONADO O EN ALERTA';
       color = 'Amarillo';
       accion = 'Riesgo hídrico moderado: emplear variedades precoces o tolerantes a sequía, labranza de conservación y monitoreo de humedad.';
     }
 
     const precioMAGA = liveMagaData.precio || 235.0;
-    const factorRend = 0.40 + 0.60 * baseProb;
+    const factorRend = 0.40 + 0.60 * calculatedProb;
     const rendQqMz = 65.0 * factorRend;
     const prodQq = rendQqMz * mz;
     const inversionQ = parseFloat(p.capital) || 7200;
@@ -924,11 +1044,11 @@ document.addEventListener('DOMContentLoaded', () => {
       sowing_date: p.date,
       lat: p.lat,
       lon: p.lon,
-      probabilidad: baseProb,
+      probabilidad: +calculatedProb.toFixed(3),
       semaforo_estado: estado,
       semaforo_color: color,
       semaforo_accion: accion,
-      fase_enso: faseEnso,
+      fase_enso: 'Neutral',
       terreno: {
         forma: p.shape_type === 'cuadrilatero' ? 'Cuadrilátero Irregular' : p.shape_type === 'triangulo' ? 'Triangular' : 'Rectangular',
         shape_type: p.shape_type,
@@ -947,7 +1067,7 @@ document.addEventListener('DOMContentLoaded', () => {
         libras_semilla: (((color === 'Verde' ? 5.8 : color === 'Amarillo' ? 4.4 : 3.6) * areaM2 * 1.235) / 1400).toFixed(1),
         distancia_surcos_cm: color === 'Verde' ? 80.0 : color === 'Amarillo' ? 85.0 : 90.0,
         distancia_posturas_cm: color === 'Verde' ? 22.0 : color === 'Amarillo' ? 27.0 : 31.0,
-        diagnostico_densidad: 'Densidad calculada adaptada al régimen hídrico de la siembra.'
+        diagnostico_densidad: 'Densidad calculada adaptada al régimen hídrico evaluado.'
       },
       financiero: {
         fuente_oficial_maga: liveMagaData.fuente || 'MAGA SIMPA Precios Mayoristas (La Terminal)',
@@ -991,34 +1111,35 @@ document.addEventListener('DOMContentLoaded', () => {
         ]
       },
       timeline: {
-        days: Array.from({length: 60}, (_, i) => i + 1),
-        precipDaily: Array.from({length: 60}, () => +(Math.random() * 8).toFixed(1)),
-        precipAcc: Array.from({length: 60}, (_, i) => +(i * 4.5).toFixed(1)),
-        etcAcc: Array.from({length: 60}, (_, i) => +(i * 3.8).toFixed(1)),
-        soilFrac: Array.from({length: 60}, () => +(0.4 + Math.random() * 0.4).toFixed(2))
+        days: timelineDays,
+        precipDaily: timelinePrecipDaily,
+        precipAcc: timelinePrecipAcc,
+        etcAcc: timelineEtcAcc,
+        soilFrac: timelineSoilFrac
       },
       criterios_algoritmo: {
         eta_etc_min: 0.90,
-        excess_mm_day: 15.0,
-        waterlog_max_days: 8,
+        excess_mm_day: EXCESS_THRESHOLD,
+        waterlog_max_days: MAX_WATERLOG_DAYS,
         ventana_dias: 60,
         fallow_kc: 0.5,
         suelo_textura: "26.0% Arcilla, 52.0% Arena, 1.8% MO",
         prob_optimo_min: 0.70,
         prob_alerta_min: 0.40
       },
-      evaluacion_historica: p.date === '2026-06-01' ? {
+      evaluacion_historica: {
         disponible: true,
-        eta_etc_real: 0.88,
-        dias_anegamiento_real: 3,
-        fallo_sequia: true,
-        fallo_exceso: false,
-        resultado_real: "FRACASO",
-        motivo_fallo: "Déficit hídrico: relación hídrica alcanzó 0.88, menor al umbral estricto 0.90",
-        nota_discrepancia: "El modelo predijo 71.0% de probabilidad de siembra recomendada según las condiciones antecedentes al día de siembra. A posteriori, la lluvia en los 60 días subsiguientes alcanzó un índice de cobertura hídrica de 0.88, quedando un 2% por debajo del umbral mínimo de 0.90 requerido para considerar la siembra un éxito pleno."
-      } : {
-        disponible: false,
-        resultado_real: "Fecha futura o periodo sin cierre de 60 días"
+        eta_etc_real: +etaEtcRatio.toFixed(2),
+        dias_anegamiento_real: waterlogCount,
+        fallo_sequia: etaEtcRatio < 0.90,
+        fallo_exceso: waterlogCount > MAX_WATERLOG_DAYS,
+        resultado_real: (etaEtcRatio >= 0.90 && waterlogCount <= MAX_WATERLOG_DAYS) ? 'VIABLE' : 'FRACASO',
+        motivo_fallo: etaEtcRatio < 0.90
+          ? `Déficit hídrico fenológico: relación real ${etaEtcRatio.toFixed(2)}, menor al umbral estricto 0.90`
+          : waterlogCount > MAX_WATERLOG_DAYS
+            ? `Anegamiento crítico: ${waterlogCount} días de exceso en el suelo (máximo tolerable: 8 días)`
+            : 'Satisfactorio: Demanda hídrica satisfecha sin anegamiento crítico',
+        nota_discrepancia: `Simulación física diaria calculada para la ventana fenológica de 60 días a partir de la fecha ${p.date}.`
       },
       report_pdf_path: 'Informe_Viabilidad_Maiz_Jutiapa.pdf'
     };

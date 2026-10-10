@@ -176,6 +176,11 @@ class AgroServerHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
 
+# Exportaciones de nivel superior para compatibilidad con Vercel Serverless
+handler = AgroServerHandler
+app = AgroServerHandler
+
+
 def run_server(port=8000):
     server_address = ("", port)
     httpd = ThreadedHTTPServer(server_address, AgroServerHandler)

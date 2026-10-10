@@ -3209,3 +3209,23 @@ body {
     color: #0F172A !important;
   }
 }
+
+/* Reglas de renderizado para exportación de PDF sin elementos transparentes */
+#resultsSectionPdfClone,
+#resultsSectionPdfClone * {
+  opacity: 1 !important;
+  transform: none !important;
+  visibility: visible !important;
+}
+
+#resultsSectionPdfClone .bento-card-clean,
+#resultsSectionPdfClone .semaforo-banner,
+#resultsSectionPdfClone .chart-box-clean,
+#resultsSectionPdfClone .finance-box-clean,
+#resultsSectionPdfClone .table-wrap-clean,
+#resultsSectionPdfClone #monthlyRainfallBox {
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
+  margin-bottom: 20px !important;
+}
+

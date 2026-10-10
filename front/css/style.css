@@ -3145,3 +3145,67 @@ body {
     margin: 0 0 24px 0;
   }
 }
+
+/* ==============================================================================
+   ESTILOS DE IMPRESIÓN Y EXPORTACIÓN A PDF LIMPIO (SIN 404 NI DESBORDAMIENTOS)
+   ============================================================================== */
+@media print {
+  /* Ocultar elementos interactivos y de navegación no deseados en el PDF */
+  .top-navbar,
+  .hero-clean,
+  .carousel-section,
+  #servicios,
+  .form-section-clean,
+  #diagnostico,
+  .faq-section-clean,
+  #faq,
+  .footer-clean,
+  .ambient-blur-container,
+  .pdf-export-strip,
+  .btn-pdf-download,
+  #progressCard,
+  .carousel-nav-btn,
+  .carousel-dots {
+    display: none !important;
+  }
+
+  body, .app-container {
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  #resultsSection {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 10px 0 !important;
+    margin: 0 !important;
+  }
+
+  .semaforo-banner,
+  .bento-card-clean,
+  .chart-box-clean,
+  .finance-box-clean,
+  .table-wrap-clean,
+  #monthlyRainfallBox {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    box-shadow: none !important;
+    border: 1px solid #CBD5E1 !important;
+    margin-bottom: 20px !important;
+  }
+
+  .clean-data-table th {
+    background: #F1F5F9 !important;
+    color: #0F172A !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .clean-data-table td {
+    color: #0F172A !important;
+  }
+}

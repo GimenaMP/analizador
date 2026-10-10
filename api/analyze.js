@@ -61,39 +61,197 @@ export default async function handler(req, res) {
     const manzanas = areaM2 / 7000.0;
     const hectareas = areaM2 / 10000.0;
 
-    // 2. Probabilidad Agroclimática (RF-02 y RF-03)
+    // 2. Ingesta Meteorológica en Tiempo Real (Open-Meteo Live API 92 días + Pronóstico 14 días)
     const sDate = new Date(`${sowingDate}T00:00:00`);
-    const month = isNaN(sDate.getTime()) ? 6 : sDate.getMonth() + 1;
+    const dayOfYear = Math.floor((sDate - new Date(sDate.getFullYear(), 0, 1)) / (24 * 60 * 60 * 1000)) + 1;
+    const doySin = Math.sin((2 * Math.PI * dayOfYear) / 365.25);
+    const doyCos = Math.cos((2 * Math.PI * dayOfYear) / 365.25);
 
-    let baseProb = 0.633;
-    let faseEnso = 'Neutral';
+    let weatherMap = {};
+    let dataSource = 'Climatología ERA5 Reanálisis (1981-Presente)';
+    try {
+      // 1. Ingesta en tiempo real (últimos 92 días observados + 14 días pronóstico ECMWF)
+      const liveUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_sum,et0_fao_evapotranspiration,temperature_2m_mean&timezone=America/Guatemala&past_days=92&forecast_days=14`;
+      const liveRes = await fetch(liveUrl, { signal: AbortSignal.timeout(3500) });
+      if (liveRes.ok) {
+        const liveData = await liveRes.json();
+        if (liveData.daily && liveData.daily.time) {
+          liveData.daily.time.forEach((t, i) => {
+            weatherMap[t] = {
+              p: liveData.daily.precipitation_sum[i] || 0,
+              et0: liveData.daily.et0_fao_evapotranspiration[i] || 3.8
+            };
+          });
+          dataSource = 'Open-Meteo Live API (Observaciones Satelitales + Pronóstico ECMWF 14 Días)';
+        }
+      }
 
-    if (month >= 5 && month <= 7) {
-      baseProb = 0.642;
-      faseEnso = 'Neutral / Transición';
-    } else if (month >= 8 && month <= 10) {
-      baseProb = 0.584;
-      faseEnso = 'La Niña Débil';
-    } else {
-      baseProb = 0.085;
-      faseEnso = 'Neutral';
+      // 2. Ingesta de archivo histórico real si la ventana de simulación o fecha seleccionada es previa a julio 2026
+      const earliestNeeded = new Date(sDate.getTime() - 35 * 24 * 60 * 60 * 1000);
+      const earliestStr = earliestNeeded.toISOString().split('T')[0];
+      if (earliestStr < '2026-07-10' && earliestStr >= '2026-01-01') {
+        const archiveUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${earliestStr}&end_date=2026-07-09&daily=precipitation_sum,et0_fao_evapotranspiration&timezone=America/Guatemala`;
+        const arcRes = await fetch(archiveUrl, { signal: AbortSignal.timeout(3500) });
+        if (arcRes.ok) {
+          const arcData = await arcRes.json();
+          if (arcData.daily && arcData.daily.time) {
+            arcData.daily.time.forEach((t, i) => {
+              if (!weatherMap[t]) {
+                weatherMap[t] = {
+                  p: arcData.daily.precipitation_sum[i] || 0,
+                  et0: arcData.daily.et0_fao_evapotranspiration[i] || 3.8
+                };
+              }
+            });
+            dataSource = 'Open-Meteo Live & Archive API (Observaciones Reales Satelitales y Estaciones)';
+          }
+        }
+      }
+    } catch (e) {
+      // Fallback a función climatológica diaria ERA5
     }
 
+    // Función climatológica diaria para Jutiapa (calibrada con 46 años de ERA5)
+    function getClimatologyDaily(doy) {
+      let p = 0.3, et0 = 3.8;
+      if (doy >= 125 && doy <= 304) {
+        if (doy >= 185 && doy <= 215) { p = 5.2; et0 = 4.2; } // Canícula julio
+        else if (doy >= 244 && doy <= 273) { p = 11.4; et0 = 3.6; } // Pico sept
+        else if (doy >= 274 && doy <= 304) {
+          const frac = (doy - 274) / 30.0;
+          p = Math.max(0.8, 12.0 - frac * 10.5); // Desplome oct
+          et0 = 3.7;
+        } else { p = 8.5; et0 = 3.9; }
+      } else if (doy >= 305 && doy <= 334) {
+        p = 1.4; et0 = 3.6; // Noviembre
+      } else {
+        p = 0.2; et0 = 4.1; // Estiaje
+      }
+      return { p, et0 };
+    }
+
+    function getWeatherForDate(dt, dOfYear) {
+      const ds = dt.toISOString().split('T')[0];
+      if (weatherMap[ds]) return weatherMap[ds];
+      return getClimatologyDaily(dOfYear);
+    }
+
+    // Cálculo antecedente real (15 y 30 días previos a la siembra)
+    let precip15d = 0;
+    let precip30d = 0;
+    let et030d = 0;
+    let dryCount = 0;
+
+    for (let back = 30; back >= 1; back--) {
+      const pastDt = new Date(sDate.getTime() - back * 24 * 60 * 60 * 1000);
+      const pastDoy = ((dayOfYear - back - 1 + 365) % 365) + 1;
+      const w = getWeatherForDate(pastDt, pastDoy);
+      precip30d += w.p;
+      et030d += w.et0;
+      if (back <= 15) precip15d += w.p;
+      if (w.p < 1.5) dryCount++;
+      else dryCount = 0;
+    }
+
+    const balance30d = precip30d - et030d;
+    const initialSoilFrac = Math.min(1.0, Math.max(0.08, (precip30d / Math.max(et030d, 1.0)) * 0.70));
+
+    // Parámetros edáficos Saxton & Rawls (2006) para Franco-Arcillo-Arenoso de Jutiapa
+    const TAW_MM = 105.6;
+    const RAW_MM = 58.08;
+    const EXCESS_THRESHOLD = 15.0;
+    const MAX_WATERLOG_DAYS = 8;
+
+    // 3. Simulación física día a día de los 60 días fenológicos
+    const timelineDays = [];
+    const timelinePrecipDaily = [];
+    const timelinePrecipAcc = [];
+    const timelineEtcAcc = [];
+    const timelineSoilFrac = [];
+
+    let currentS = initialSoilFrac * TAW_MM;
+    let accP = 0, accEtc = 0, accEta = 0;
+    let waterlogDays = 0, droughtStressDays = 0;
+
+    for (let day = 1; day <= 60; day++) {
+      const simDt = new Date(sDate.getTime() + (day - 1) * 24 * 60 * 60 * 1000);
+      const simDoy = ((dayOfYear + day - 1) % 365) + 1;
+      const w = getWeatherForDate(simDt, simDoy);
+
+      // Coeficiente fenológico Kc para maíz (FAO-56)
+      let kc = 0.40;
+      if (day > 15 && day <= 35) kc = 0.40 + ((day - 15) / 20.0) * (1.15 - 0.40);
+      else if (day > 35) kc = 1.15;
+
+      const etc = kc * w.et0;
+      const ks = (TAW_MM - currentS) <= RAW_MM ? 1.0 : Math.max(0.0, currentS / Math.max(TAW_MM - RAW_MM, 1e-4));
+      const eta = etc * ks;
+
+      const sNext = currentS + w.p - eta;
+      if (sNext > TAW_MM) {
+        if ((sNext - TAW_MM) >= EXCESS_THRESHOLD) waterlogDays++;
+        currentS = TAW_MM;
+      } else if (sNext < 0) {
+        currentS = 0;
+      } else {
+        currentS = sNext;
+      }
+
+      if (ks < 0.90) droughtStressDays++;
+
+      accP += w.p;
+      accEtc += etc;
+      accEta += eta;
+
+      timelineDays.push(day);
+      timelinePrecipDaily.push(+w.p.toFixed(1));
+      timelinePrecipAcc.push(+accP.toFixed(1));
+      timelineEtcAcc.push(+accEtc.toFixed(1));
+      timelineSoilFrac.push(+(currentS / TAW_MM).toFixed(2));
+    }
+
+    const etaEtcRatio = accEta / Math.max(accEtc, 1e-4);
+
+    // 4. Inferencia con Modelo Calibrado de Machine Learning (Pesos 45 años ERA5 Jutiapa)
+    const norm = (val, mean, scale) => (val - mean) / scale;
+    const zScore = -1.8617 +
+      (-0.1376) * norm(precip15d, 71.26, 80.60) +
+      (2.1442) * norm(precip30d, 142.49, 145.58) +
+      (-1.8859) * norm(balance30d, 20.65, 156.26) +
+      (-0.1059) * norm(initialSoilFrac, 0.576, 0.422) +
+      (-1.5180) * norm(dryCount, 11.43, 21.76) +
+      (0.3778) * norm(doySin, 0.0069, 0.7067) +
+      (-1.2634) * norm(doyCos, -0.0012, 0.7075);
+
+    let probCalculada = 1.0 / (1.0 + Math.exp(-zScore));
+    probCalculada = Math.max(0.05, Math.min(0.92, probCalculada));
+
+    // Ajuste físico estricto por cobertura hídrica y anegamiento
+    if (etaEtcRatio < 0.90) {
+      probCalculada = Math.min(probCalculada, 0.35 * (etaEtcRatio / 0.90));
+    }
+    if (waterlogDays > MAX_WATERLOG_DAYS) {
+      probCalculada = Math.min(probCalculada, 0.28);
+    }
+
+    // Determinación del Semáforo Agronómico
     let semaforoEstado = 'NO SEMBRAR';
     let semaforoColor = 'Rojo';
-    let semaforoAccion = 'Riesgo elevado de déficit hídrico extremo o canícula severa. Se recomienda postergar o instalar riego tecnificado.';
+    let semaforoAccion = 'Riesgo crítico de fracaso hídrico por cese de lluvias en floración o déficit severo. No se recomienda siembra a temporal sin riego.';
 
-    if (baseProb >= 0.70) {
+    if (probCalculada >= 0.70) {
       semaforoEstado = 'ÓPTIMO';
       semaforoColor = 'Verde';
-      semaforoAccion = 'Condiciones hídricas altamente favorables. Proceder con la siembra en la densidad recomendada.';
-    } else if (baseProb >= 0.40) {
+      semaforoAccion = 'Condiciones hídricas altamente favorables (cobertura > 90%). Proceder con siembra tecnificada en fecha programada.';
+    } else if (probCalculada >= 0.40) {
       semaforoEstado = 'CONDICIONADO O EN ALERTA';
       semaforoColor = 'Amarillo';
       semaforoAccion = 'Riesgo hídrico moderado: emplear variedades precoces o tolerantes a sequía, labranza de conservación y monitoreo de humedad.';
     }
 
-    // 3. Recomendación de Densidad de Siembra (RF-06)
+    const faseEnso = 'Neutral';
+
+    // 5. Recomendación de Densidad de Siembra (RF-06)
     const densityM2 = semaforoColor === 'Verde' ? 5.8 : semaforoColor === 'Amarillo' ? 4.4 : 3.6;
     const densityMz = Math.round(densityM2 * 7000);
     const totalPlants = Math.round(densityM2 * areaM2);
@@ -103,8 +261,8 @@ export default async function handler(req, res) {
     const rowDistance = semaforoColor === 'Verde' ? 80.0 : semaforoColor === 'Amarillo' ? 85.0 : 90.0;
     const plantDistance = semaforoColor === 'Verde' ? 22.0 : semaforoColor === 'Amarillo' ? 27.0 : 31.0;
 
-    // 4. Proyección Financiera Oficial MAGA (RF-07) - Exclusivo Maíz Blanco
-    const factorRend = 0.40 + 0.60 * baseProb;
+    // 6. Proyección Financiera Oficial MAGA (RF-07) - Exclusivo Maíz Blanco
+    const factorRend = 0.40 + 0.60 * probCalculada;
     const rendQqMz = +(65.0 * factorRend).toFixed(1);
     const prodQq = +(rendQqMz * manzanas).toFixed(1);
     const ingresoBruto = +(prodQq * precioMAGA).toFixed(2);
@@ -112,21 +270,12 @@ export default async function handler(req, res) {
     const roi = +(((utilidadNeta) / capitalInversion) * 100).toFixed(1);
     const breakEven = +(capitalInversion / precioMAGA).toFixed(1);
 
-    // 5. Simulación de Serie Temporal de Lluvias (60 días fenológicos) (RF-04)
-    const timelineDays = Array.from({ length: 60 }, (_, i) => i + 1);
-    const timelinePrecipDaily = timelineDays.map(() => +(Math.random() * 8.5).toFixed(1));
-    let accP = 0;
-    const timelinePrecipAcc = timelinePrecipDaily.map(v => { accP += v; return +accP.toFixed(1); });
-    let accEtc = 0;
-    const timelineEtcAcc = timelineDays.map(() => { accEtc += 3.8; return +accEtc.toFixed(1); });
-    const timelineSoilFrac = timelineDays.map(() => +(0.45 + Math.random() * 0.35).toFixed(2));
-
     const responseData = {
       success: true,
       sowing_date: sowingDate,
       lat,
       lon,
-      probabilidad: baseProb,
+      probabilidad: +probCalculada.toFixed(3),
       semaforo_estado: semaforoEstado,
       semaforo_color: semaforoColor,
       semaforo_accion: semaforoAccion,
@@ -222,7 +371,7 @@ export default async function handler(req, res) {
         disponible: false,
         resultado_real: "Fecha futura o periodo sin cierre de 60 días"
       },
-      analisis_pluviometrico: computeMonthlyRainfallAnalysis(sowingDate, faseEnso),
+      analisis_pluviometrico: computeMonthlyRainfallAnalysis(sowingDate, faseEnso, weatherMap, getClimatologyDaily),
       report_pdf_path: 'Informe_Viabilidad_Maiz_Jutiapa.pdf'
     };
 
@@ -234,10 +383,11 @@ export default async function handler(req, res) {
 
 /**
  * Algoritmo inteligente de análisis pluviométrico para el mes seleccionado
- * Derivado de 46 años de observaciones climáticas ERA5 en Jutiapa (1981-Presente)
+ * Calcula la precipitación y decádicas a partir de las observaciones en tiempo real de Open-Meteo y reanálisis ERA5
  */
-function computeMonthlyRainfallAnalysis(sowingDate, faseEnso = 'Neutral') {
+function computeMonthlyRainfallAnalysis(sowingDate, faseEnso = 'Neutral', weatherMap = {}, getClimatologyDaily = null) {
   const d = new Date(`${sowingDate}T00:00:00`);
+  const year = d.getFullYear();
   const m = d.getMonth() + 1; // 1-12
   
   const CLIMA_JUTIAPA = {
@@ -256,67 +406,160 @@ function computeMonthlyRainfallAnalysis(sowingDate, faseEnso = 'Neutral') {
   };
 
   const curr = CLIMA_JUTIAPA[m];
+  const ultDia = curr.ultDia;
+
+  // Cálculo real a partir de weatherMap si contiene observaciones o pronósticos
+  let realP = 0, realD1 = 0, realD2 = 0, realD3 = 0;
+  let hasRealData = false;
+
+  for (let day = 1; day <= ultDia; day++) {
+    const dayStr = `${year}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    let pDay = 0;
+    if (weatherMap && weatherMap[dayStr]) {
+      pDay = weatherMap[dayStr].p;
+      hasRealData = true;
+    } else if (getClimatologyDaily) {
+      const dt = new Date(`${dayStr}T00:00:00`);
+      const doy = Math.floor((dt - new Date(year, 0, 1)) / (24 * 60 * 60 * 1000)) + 1;
+      pDay = getClimatologyDaily(doy).p;
+    } else {
+      pDay = curr.precip / ultDia;
+    }
+
+    realP += pDay;
+    if (day <= 10) realD1 += pDay;
+    else if (day <= 20) realD2 += pDay;
+    else realD3 += pDay;
+  }
+
+  const precipCalculada = hasRealData ? +realP.toFixed(1) : curr.precip;
+  const d1Calculada = hasRealData ? +realD1.toFixed(1) : curr.d1;
+  const d2Calculada = hasRealData ? +realD2.toFixed(1) : curr.d2;
+  const d3Calculada = hasRealData ? +realD3.toFixed(1) : curr.d3;
+
+  // Caracterización climática basada en la precipitación real calculada
+  let tipoCalculado = curr.tipo;
+  let badgeCalculado = curr.badge;
+  let caractCalculada = curr.caract;
+
+  if (precipCalculada >= 280) {
+    tipoCalculado = 'Aumento Significativo';
+    badgeCalculado = 'aumento';
+    caractCalculada = 'Precipitaciones Abundantes (Pico Lluvioso)';
+  } else if (precipCalculada >= 140) {
+    tipoCalculado = 'Aumento de Lluvias';
+    badgeCalculado = 'aumento';
+    caractCalculada = m === 10 ? 'Temporada Ciclónica y Retiro de Lluvias' : 'Régimen Favorable de Lluvias';
+  } else if (precipCalculada >= 70) {
+    tipoCalculado = 'Régimen Moderado';
+    badgeCalculado = 'moderado';
+    caractCalculada = 'Lluvias Intermitentes / Reducción por Canícula';
+  } else if (precipCalculada >= 25) {
+    tipoCalculado = 'Déficit Moderado';
+    badgeCalculado = 'deficit';
+    caractCalculada = 'Déficit Pluviométrico / Transición Seca';
+  } else {
+    tipoCalculado = 'Déficit Extremo';
+    badgeCalculado = 'deficit';
+    caractCalculada = 'Déficit Severo / Canícula Extrema o Estiaje';
+  }
+
   const prevIdx = ((m - 2 + 12) % 12) + 1;
   const nextIdx = (m % 12) + 1;
   const prev = CLIMA_JUTIAPA[prevIdx];
   const next = CLIMA_JUTIAPA[nextIdx];
 
+  function calcMonthTotal(mIdx) {
+    let pSum = 0;
+    let found = false;
+    const u = CLIMA_JUTIAPA[mIdx].ultDia;
+    for (let day = 1; day <= u; day++) {
+      const dayStr = `${year}-${String(mIdx).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      if (weatherMap && weatherMap[dayStr]) {
+        pSum += weatherMap[dayStr].p;
+        found = true;
+      } else if (getClimatologyDaily) {
+        const dt = new Date(`${dayStr}T00:00:00`);
+        const doy = Math.floor((dt - new Date(year, 0, 1)) / (24 * 60 * 60 * 1000)) + 1;
+        pSum += getClimatologyDaily(doy).p;
+      } else {
+        pSum += CLIMA_JUTIAPA[mIdx].precip / u;
+      }
+    }
+    return found ? +pSum.toFixed(1) : CLIMA_JUTIAPA[mIdx].precip;
+  }
+
+  const prevPrecip = calcMonthTotal(prevIdx);
+  const nextPrecip = calcMonthTotal(nextIdx);
+
   let ensoLabel = 'Fase Climática Neutral';
-  let ensoDesc = `Bajo condiciones Neutrales, la precipitación en ${curr.nombre} se mantiene cercana a su media histórica de ${curr.precip.toFixed(1)} mm.`;
+  let ensoDesc = `Condiciones agrometeorológicas en ${curr.nombre} con total calculado de ${precipCalculada} mm (${hasRealData ? 'observaciones satelitales y estaciones Open-Meteo' : 'climatología histórica ERA5'}).`;
   
   const faseLower = (faseEnso || '').toLowerCase();
   if (faseLower.includes('nina') || faseLower.includes('niña')) {
     ensoLabel = 'La Niña / Alta Influencia Ciclónica';
-    ensoDesc = `En fases de La Niña o temporales ciclónicos en el Caribe, las lluvias de ${curr.nombre} en Jutiapa se incrementan en promedio +19.7%, alcanzando aproximadamente ${(curr.precip * 1.197).toFixed(1)} mm.`;
+    ensoDesc = `En fases de La Niña o temporales ciclónicos en el Caribe, las lluvias de ${curr.nombre} en Jutiapa se intensifican, registrándose ${precipCalculada} mm.`;
   } else if (faseLower.includes('nino') || faseLower.includes('niño')) {
     ensoLabel = 'El Niño / Déficit Pluviométrico';
-    ensoDesc = `En fases de El Niño, se presenta una reducción de lluvias de aproximadamente -22.5%, proyectando ${(curr.precip * 0.775).toFixed(1)} mm con riesgo de adelanto de canícula o retiro prematuro de humedad.`;
+    ensoDesc = `En fases de El Niño, se presenta una reducción de lluvias, registrándose ${precipCalculada} mm con riesgo de adelanto de canícula o retiro prematuro de humedad.`;
   }
 
   let conclusion = '';
   if (m === 10) {
-    conclusion = `Aunque en Octubre se registra un AUMENTO de lluvias (${curr.precip.toFixed(1)} mm) impulsado por temporales de fin de temporada y ciclones, sembrar maíz en esta fecha conlleva un riesgo severo. El ciclo del maíz blanco requiere entre 60 y 90 días: la planta germinará con alta humedad, pero sufrirá un DÉFICIT HÍDRICO TERMINAL en noviembre y diciembre durante la floración y el llenado de grano, cuando las lluvias caen bruscamente a menos de 1 mm diario.`;
+    conclusion = `En Octubre el modelo proyecta un total de ${precipCalculada} mm (con ${d1Calculada} mm en la primera decena y ${d2Calculada} mm en la segunda), impulsado por temporales de fin de temporada y actividad ciclónica. Sin embargo, sembrar maíz en esta fecha conlleva un RIESGO SEVERO DE FRACASO: el maíz blanco requiere entre 60 y 90 días de aporte hídrico continuo. La planta germinará con alta humedad en octubre, pero sufrirá un DÉFICIT HÍDRICO TERMINAL en noviembre (${nextPrecip} mm) y diciembre (estiaje severo) durante la floración y el llenado de grano.`;
   } else if (m === 5 || m === 6) {
-    conclusion = `En ${curr.nombre} se presenta un AUMENTO SIGNIFICATIVO de precipitaciones (${curr.precip.toFixed(1)} mm), correspondiente a la ventana óptima de Siembra de Primera. Hay garantía de humedad edáfica para la germinación y desarrollo vegetativo vigoroso.`;
+    if (precipCalculada >= 120) {
+      conclusion = `En ${curr.nombre} se registra ${precipCalculada} mm (primera decena: ${d1Calculada} mm, segunda: ${d2Calculada} mm, tercera: ${d3Calculada} mm), correspondiente a la ventana de Siembra de Primera. Hay disponibilidad de humedad para germinación y desarrollo vegetativo temprano.`;
+    } else {
+      conclusion = `En ${curr.nombre} se registra un aporte moderado de ${precipCalculada} mm. Se recomienda monitorear la persistencia de lluvias antes de la siembra generalizada de Primera.`;
+    }
   } else if (m === 7) {
-    conclusion = `En Julio ocurre una reducción relativa de lluvia (${curr.precip.toFixed(1)} mm) debido a la Canícula de medio año. Se recomienda calibrar la fecha hacia la siembra de Postrera en Agosto o emplear variedades precoces tolerantes a estrés.`;
-  } else if (m === 8 || m === 9) {
-    conclusion = `En ${curr.nombre} se registra un AUMENTO ELEVADO de precipitaciones (${curr.precip.toFixed(1)} mm) característico de la temporada de Postrera. Excelente disponibilidad hídrica, debiendo vigilar drenajes en parcelas con alta retención para evitar asfixia radicular.`;
+    conclusion = `En Julio se registra ${precipCalculada} mm debido a la Canícula de medio año (${precipCalculada < 50 ? 'marcado déficit hídrico y cese de lluvias' : 'reducción relativa'}). Se recomienda calibrar la fecha hacia la siembra de Postrera en Agosto o emplear variedades precoces tolerantes a estrés.`;
+  } else if (m === 8) {
+    if (precipCalculada >= 140) {
+      conclusion = `En Agosto se registran ${precipCalculada} mm correspondientes al establecimiento de la siembra de Postrera con buen aporte hídrico.`;
+    } else {
+      conclusion = `En Agosto se registra un déficit hídrico de ${precipCalculada} mm (prolongación de la canícula o retraso de la postrera). Se aconseja extremar precauciones y sembrar únicamente cuando el suelo recupere humedad de fondo.`;
+    }
+  } else if (m === 9) {
+    conclusion = `En Septiembre se registra ${precipCalculada} mm (${d3Calculada > 60 ? 'con notable repunte lluvioso en la segunda mitad del mes' : 'régimen de postrera'}). Buena disponibilidad hídrica, debiendo vigilar drenajes en parcelas con alta retención para evitar asfixia radicular.`;
   } else {
-    conclusion = `En ${curr.nombre} existe un DÉFICIT SEVERO de precipitaciones (${curr.precip.toFixed(1)} mm) correspondiente al periodo seco o de estiaje. La siembra a temporal es inviable sin suministro de riego complementario.`;
+    conclusion = `En ${curr.nombre} existe un DÉFICIT SEVERO de precipitaciones (${precipCalculada} mm) correspondiente al periodo seco o de estiaje. La siembra a temporal es inviable sin suministro de riego complementario.`;
   }
+
+  const safeTot = Math.max(precipCalculada, 0.1);
 
   return {
     mes_nombre: curr.nombre,
     pregunta_titulo: `¿Hay déficit o aumento de lluvias en ${curr.nombre}?`,
-    diagnostico_badge: curr.tipo,
-    badge_tipo: curr.badge,
+    diagnostico_badge: tipoCalculado,
+    badge_tipo: badgeCalculado,
     tabla_comparativa: [
-      { mes: prev.nombre, precip: `${prev.precip.toFixed(1)} mm`, caracterizacion: prev.caract, es_seleccionado: false, badge: prev.badge },
-      { mes: curr.nombre, precip: `${curr.precip.toFixed(1)} mm`, caracterizacion: curr.caract, es_seleccionado: true, badge: curr.badge },
-      { mes: next.nombre, precip: `${next.precip.toFixed(1)} mm`, caracterizacion: next.caract, es_seleccionado: false, badge: next.badge }
+      { mes: prev.nombre, precip: `${prevPrecip.toFixed(1)} mm`, caracterizacion: prev.caract, es_seleccionado: false, badge: prev.badge },
+      { mes: curr.nombre, precip: `${precipCalculada.toFixed(1)} mm`, caracterizacion: caractCalculada, es_seleccionado: true, badge: badgeCalculado },
+      { mes: next.nombre, precip: `${nextPrecip.toFixed(1)} mm`, caracterizacion: next.caract, es_seleccionado: false, badge: next.badge }
     ],
     distribucion_decenas: [
       {
         rango: `1 a 10 de ${curr.nombre}`,
         etiqueta: 'Primera decena',
-        mm: curr.d1.toFixed(1),
-        porcentaje: `${((curr.d1 / curr.precip) * 100).toFixed(1)}%`,
-        detalle: m === 10 ? 'Pico concentrado de lluvias por ondas del este y actividad ciclónica.' : (curr.d1 >= 80 ? 'Intensidad alta de precipitación continua.' : 'Lluvias moderadas de inicio de mes.')
+        mm: d1Calculada.toFixed(1),
+        porcentaje: `${((d1Calculada / safeTot) * 100).toFixed(1)}%`,
+        detalle: m === 10 ? 'Pico concentrado de lluvias por ondas del este y actividad ciclónica.' : (d1Calculada >= 80 ? 'Intensidad alta de precipitación continua.' : 'Lluvias moderadas de inicio de mes.')
       },
       {
         rango: `11 a 20 de ${curr.nombre}`,
         etiqueta: 'Segunda decena',
-        mm: curr.d2.toFixed(1),
-        porcentaje: `${((curr.d2 / curr.precip) * 100).toFixed(1)}%`,
-        detalle: m === 10 ? 'Lluvias regulares con tendencia gradual decreciente.' : (curr.d2 >= 80 ? 'Régimen pluviométrico sostenido.' : 'Aporte hídrico regular.')
+        mm: d2Calculada.toFixed(1),
+        porcentaje: `${((d2Calculada / safeTot) * 100).toFixed(1)}%`,
+        detalle: m === 10 ? 'Lluvias regulares con tendencia gradual decreciente.' : (d2Calculada >= 80 ? 'Régimen pluviométrico sostenido.' : 'Aporte hídrico regular.')
       },
       {
-        rango: `21 al ${curr.ultDia} de ${curr.nombre}`,
+        rango: `21 al ${ultDia} de ${curr.nombre}`,
         etiqueta: 'Tercera decena',
-        mm: curr.d3.toFixed(1),
-        porcentaje: `${((curr.d3 / curr.precip) * 100).toFixed(1)}%`,
-        detalle: m === 10 ? 'Desplome marcado de lluvias e inicio de la retirada de la temporada.' : (curr.d3 >= 80 ? 'Precipitaciones abundantes de fin de mes.' : 'Tendencia a disminución hacia el siguiente mes.')
+        mm: d3Calculada.toFixed(1),
+        porcentaje: `${((d3Calculada / safeTot) * 100).toFixed(1)}%`,
+        detalle: m === 10 ? 'Desplome marcado de lluvias e inicio de la retirada de la temporada.' : (d3Calculada >= 80 ? 'Precipitaciones abundantes de fin de mes.' : 'Tendencia a disminución hacia el siguiente mes.')
       }
     ],
     impacto_evento: {
@@ -326,4 +569,5 @@ function computeMonthlyRainfallAnalysis(sowingDate, faseEnso = 'Neutral') {
     conclusiones_modelo: conclusion
   };
 }
+
 

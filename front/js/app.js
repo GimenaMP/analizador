@@ -857,13 +857,53 @@ document.addEventListener('DOMContentLoaded', () => {
       sensitivityTableBody.appendChild(tr);
     });
 
-    // Enlace de descarga PDF (RF-08)
-    if (data.report_pdf_path) {
-      btnDownloadPdf.href = `/output/${data.report_pdf_path.split(/[\\/]/).pop()}`;
-      btnDownloadPdf.target = '_blank';
-    } else {
-      btnDownloadPdf.href = '#';
-      btnDownloadPdf.onclick = () => window.print();
+    // Exportación de Dictamen Técnico en PDF (RF-08) - 100% en cliente sin dependencia de archivos estáticos
+    btnDownloadPdf.removeAttribute('target');
+    btnDownloadPdf.href = '#';
+    btnDownloadPdf.onclick = (e) => {
+      e.preventDefault();
+      downloadReportPDF(data);
+    };
+  }
+
+  /**
+   * Generador y exportador de Dictamen Técnico en PDF en el navegador
+   * Garantiza cero errores 404 en Vercel Serverless mediante html2pdf y @media print
+   */
+  async function downloadReportPDF(data) {
+    const element = document.getElementById('resultsSection');
+    if (!element) {
+      window.print();
+      return;
+    }
+
+    const btnText = btnDownloadPdf.querySelector('span');
+    const originalText = btnText ? btnText.textContent : 'Descargar Informe PDF';
+    if (btnText) btnText.textContent = 'Generando Dictamen PDF...';
+    btnDownloadPdf.style.pointerEvents = 'none';
+    btnDownloadPdf.style.opacity = '0.7';
+
+    try {
+      if (typeof html2pdf !== 'undefined') {
+        const dateStr = (data && data.sowing_date) ? data.sowing_date : new Date().toISOString().split('T')[0];
+        const opt = {
+          margin: [8, 8, 8, 8],
+          filename: `Informe_Viabilidad_Maiz_Jutiapa_${dateStr}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, logging: false },
+          jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+        };
+        await html2pdf().set(opt).from(element).save();
+      } else {
+        window.print();
+      }
+    } catch (err) {
+      console.warn('html2pdf fallback to window.print():', err);
+      window.print();
+    } finally {
+      if (btnText) btnText.textContent = originalText;
+      btnDownloadPdf.style.pointerEvents = 'auto';
+      btnDownloadPdf.style.opacity = '1';
     }
   }
 
@@ -873,8 +913,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function simulateLocally(p) {
     const sDate = new Date(p.date + 'T00:00:00');
-    const month = sDate.getMonth() + 1;
-    
+    const dayOfYear = Math.floor((sDate - new Date(sDate.getFullYear(), 0, 1)) / (24 * 60 * 60 * 1000)) + 1;
+    const doySin = Math.sin((2 * Math.PI * dayOfYear) / 365.25);
+    const doyCos = Math.cos((2 * Math.PI * dayOfYear) / 365.25);
+
     let areaM2 = 7000;
     if (p.shape_type === 'triangulo' && p.sides && p.sides.length >= 3) {
       const a = p.sides[0], b = p.sides[1], c = p.sides[2];
@@ -889,57 +931,149 @@ document.addEventListener('DOMContentLoaded', () => {
     const mz = areaM2 / 7000;
     const ha = areaM2 / 10000;
 
-    let baseProb = 0.633;
-    let faseEnso = 'Neutral';
+    function getClimatologyDaily(doy) {
+      let pr = 0.3, et0 = 3.8;
+      if (doy >= 125 && doy <= 304) {
+        if (doy >= 185 && doy <= 215) { pr = 5.2; et0 = 4.2; }
+        else if (doy >= 244 && doy <= 273) { pr = 11.4; et0 = 3.6; }
+        else if (doy >= 274 && doy <= 304) {
+          const frac = (doy - 274) / 30.0;
+          pr = Math.max(0.8, 12.0 - frac * 10.5);
+          et0 = 3.7;
+        } else { pr = 8.5; et0 = 3.9; }
+      } else if (doy >= 305 && doy <= 334) {
+        pr = 1.4; et0 = 3.6;
+      } else {
+        pr = 0.2; et0 = 4.1;
+      }
+      return { p: pr, et0 };
+    }
 
-    if (month >= 5 && month <= 7) {
-      baseProb = 0.64;
-    } else if (month >= 8 && month <= 10) {
-      baseProb = 0.58;
-    } else {
-      baseProb = 0.08;
+    let precip15d = 0, precip30d = 0, et030d = 0, dryCount = 0;
+    for (let back = 30; back >= 1; back--) {
+      const pastDoy = ((dayOfYear - back - 1 + 365) % 365) + 1;
+      const w = getClimatologyDaily(pastDoy);
+      precip30d += w.p;
+      et030d += w.et0;
+      if (back <= 15) precip15d += w.p;
+      if (w.p < 1.5) dryCount++;
+      else dryCount = 0;
+    }
+
+    const balance30d = precip30d - et030d;
+    const initialSoilFrac = Math.min(1.0, Math.max(0.08, (precip30d / Math.max(et030d, 1.0)) * 0.70));
+    const TAW_MM = 105.6;
+    const RAW_MM = 58.08;
+    const EXCESS_THRESHOLD = 15.0;
+    const MAX_WATERLOG_DAYS = 8;
+
+    const timelineDays = [];
+    const timelinePrecipDaily = [];
+    const timelinePrecipAcc = [];
+    const timelineEtcAcc = [];
+    const timelineSoilFrac = [];
+
+    let currentS = initialSoilFrac * TAW_MM;
+    let accP = 0, accEtc = 0, accEta = 0;
+    let waterlogDays = 0, droughtStressDays = 0;
+
+    for (let day = 1; day <= 60; day++) {
+      const simDoy = ((dayOfYear + day - 1) % 365) + 1;
+      const w = getClimatologyDaily(simDoy);
+
+      let kc = 0.40;
+      if (day > 15 && day <= 35) kc = 0.40 + ((day - 15) / 20.0) * (1.15 - 0.40);
+      else if (day > 35) kc = 1.15;
+
+      const etc = kc * w.et0;
+      const ks = (TAW_MM - currentS) <= RAW_MM ? 1.0 : Math.max(0.0, currentS / Math.max(TAW_MM - RAW_MM, 1e-4));
+      const eta = etc * ks;
+
+      const sNext = currentS + w.p - eta;
+      if (sNext > TAW_MM) {
+        if ((sNext - TAW_MM) >= EXCESS_THRESHOLD) waterlogDays++;
+        currentS = TAW_MM;
+      } else if (sNext < 0) {
+        currentS = 0;
+      } else {
+        currentS = sNext;
+      }
+
+      if (ks < 0.90) droughtStressDays++;
+
+      accP += w.p;
+      accEtc += etc;
+      accEta += eta;
+
+      timelineDays.push(day);
+      timelinePrecipDaily.push(+w.p.toFixed(1));
+      timelinePrecipAcc.push(+accP.toFixed(1));
+      timelineEtcAcc.push(+accEtc.toFixed(1));
+      timelineSoilFrac.push(+(currentS / TAW_MM).toFixed(2));
+    }
+
+    const etaEtcRatio = accEta / Math.max(accEtc, 1e-4);
+    const norm = (val, mean, scale) => (val - mean) / scale;
+    const zScore = -1.8617 +
+      (-0.1376) * norm(precip15d, 71.26, 80.60) +
+      (2.1442) * norm(precip30d, 142.49, 145.58) +
+      (-1.8859) * norm(balance30d, 20.65, 156.26) +
+      (-0.1059) * norm(initialSoilFrac, 0.576, 0.422) +
+      (-1.5180) * norm(dryCount, 11.43, 21.76) +
+      (0.3778) * norm(doySin, 0.0069, 0.7067) +
+      (-1.2634) * norm(doyCos, -0.0012, 0.7075);
+
+    let probCalculada = 1.0 / (1.0 + Math.exp(Math.min(20, Math.max(-20, -zScore))));
+    probCalculada = Math.max(0.05, Math.min(0.92, probCalculada));
+
+    if (etaEtcRatio < 0.90) {
+      probCalculada = Math.min(probCalculada, 0.35 * (etaEtcRatio / 0.90));
+    }
+    if (waterlogDays > MAX_WATERLOG_DAYS) {
+      probCalculada = Math.min(probCalculada, 0.28);
     }
 
     let estado = 'NO SEMBRAR';
     let color = 'Rojo';
-    let accion = 'Riesgo alto de fracaso hídrico por sequía o canícula prolongada.';
+    let accion = 'Riesgo crítico de fracaso hídrico por déficit en floración o canícula prolongada. No se recomienda siembra a temporal sin riego.';
 
-    if (baseProb >= 0.70) {
+    if (probCalculada >= 0.70) {
       estado = 'ÓPTIMO';
       color = 'Verde';
-      accion = 'Condiciones hídricas altamente favorables. Proceder con la siembra en la densidad recomendada.';
-    } else if (baseProb >= 0.40) {
+      accion = 'Condiciones hídricas altamente favorables (cobertura > 90%). Proceder con siembra tecnificada en fecha programada.';
+    } else if (probCalculada >= 0.40) {
       estado = 'CONDICIONADO O EN ALERTA';
       color = 'Amarillo';
       accion = 'Riesgo hídrico moderado: emplear variedades precoces o tolerantes a sequía, labranza de conservación y monitoreo de humedad.';
     }
 
     const precioMAGA = liveMagaData.precio || 235.0;
-    const factorRend = 0.40 + 0.60 * baseProb;
-    const rendQqMz = 65.0 * factorRend;
-    const prodQq = rendQqMz * mz;
+    const factorRend = 0.40 + 0.60 * probCalculada;
+    const rendQqMz = +(65.0 * factorRend).toFixed(1);
+    const prodQq = +(rendQqMz * mz).toFixed(1);
     const inversionQ = parseFloat(p.capital) || 7200;
-    const ingresoBruto = prodQq * precioMAGA;
-    const utilidadNeta = ingresoBruto - inversionQ;
-    const roi = (utilidadNeta / inversionQ) * 100;
+    const ingresoBruto = +(prodQq * precioMAGA).toFixed(2);
+    const utilidadNeta = +(ingresoBruto - inversionQ).toFixed(2);
+    const roi = +(((utilidadNeta) / inversionQ) * 100).toFixed(1);
+    const breakEven = +(inversionQ / precioMAGA).toFixed(1);
 
     return {
       success: true,
       sowing_date: p.date,
       lat: p.lat,
       lon: p.lon,
-      probabilidad: baseProb,
+      probabilidad: +probCalculada.toFixed(3),
       semaforo_estado: estado,
       semaforo_color: color,
       semaforo_accion: accion,
-      fase_enso: faseEnso,
+      fase_enso: 'Neutral',
       terreno: {
         forma: p.shape_type === 'cuadrilatero' ? 'Cuadrilátero Irregular' : p.shape_type === 'triangulo' ? 'Triangular' : 'Rectangular',
         shape_type: p.shape_type,
         sides: p.sides,
-        area_m2: areaM2,
-        manzanas: mz,
-        hectareas: ha,
+        area_m2: Math.round(areaM2),
+        manzanas: +mz.toFixed(3),
+        hectareas: +ha.toFixed(3),
         perimetro_m: (p.sides || []).reduce((a, b) => a + b, 0)
       },
       densidad: {
@@ -951,55 +1085,55 @@ document.addEventListener('DOMContentLoaded', () => {
         libras_semilla: (((color === 'Verde' ? 5.8 : color === 'Amarillo' ? 4.4 : 3.6) * areaM2 * 1.235) / 1400).toFixed(1),
         distancia_surcos_cm: color === 'Verde' ? 80.0 : color === 'Amarillo' ? 85.0 : 90.0,
         distancia_posturas_cm: color === 'Verde' ? 22.0 : color === 'Amarillo' ? 27.0 : 31.0,
-        diagnostico_densidad: 'Densidad calculada adaptada al régimen hídrico de la siembra.'
+        diagnostico_densidad: 'Densidad calculada adaptada al régimen hídrico de la siembra en Jutiapa.'
       },
       financiero: {
         fuente_oficial_maga: liveMagaData.fuente || 'MAGA SIMPA Precios Mayoristas (La Terminal)',
         fecha_actualizacion_maga: liveMagaData.fecha || '09/10/2026',
         tipo_maiz: 'Blanco (de primera)',
         precio_maga_qq: precioMAGA,
-        area_manzanas: mz,
-        rendimiento_estimado_qq_mz: rendQqMz.toFixed(1),
-        produccion_total_estimada_qq: prodQq.toFixed(1),
+        area_manzanas: +mz.toFixed(3),
+        rendimiento_estimado_qq_mz: rendQqMz,
+        produccion_total_estimada_qq: prodQq,
         capital_inversion_q: inversionQ,
-        inversion_por_quintal_q: inversionQ / prodQq,
+        inversion_por_quintal_q: prodQq > 0 ? +(inversionQ / prodQq).toFixed(2) : 0,
         ingreso_bruto_q: ingresoBruto,
         utilidad_neta_q: utilidadNeta,
-        roi_pct: roi.toFixed(1),
-        punto_equilibrio_qq: (inversionQ / precioMAGA).toFixed(1),
+        roi_pct: roi,
+        punto_equilibrio_qq: breakEven,
         escenarios_sensibilidad: [
           {
             "Escenario": "Optimista: Buen régimen de lluvias",
-            "Rendimiento (qq/mz)": (65.0 * 1.15).toFixed(1),
-            "Producción Total (qq)": (65.0 * 1.15 * mz).toFixed(1),
-            "Ingreso Bruto (Q)": 65.0 * 1.15 * mz * precioMAGA,
-            "Utilidad Neta (Q)": (65.0 * 1.15 * mz * precioMAGA) - inversionQ,
-            "ROI (%)": (((65.0 * 1.15 * mz * precioMAGA - inversionQ) / inversionQ) * 100).toFixed(1)
+            "Rendimiento (qq/mz)": +(65.0 * 1.15).toFixed(1),
+            "Producción Total (qq)": +(65.0 * 1.15 * mz).toFixed(1),
+            "Ingreso Bruto (Q)": +(65.0 * 1.15 * mz * precioMAGA).toFixed(2),
+            "Utilidad Neta (Q)": +((65.0 * 1.15 * mz * precioMAGA) - inversionQ).toFixed(2),
+            "ROI (%)": +((((65.0 * 1.15 * mz * precioMAGA) - inversionQ) / inversionQ) * 100).toFixed(1)
           },
           {
             "Escenario": "Proyectado: Modelo agroclimático",
-            "Rendimiento (qq/mz)": rendQqMz.toFixed(1),
-            "Producción Total (qq)": prodQq.toFixed(1),
+            "Rendimiento (qq/mz)": rendQqMz,
+            "Producción Total (qq)": prodQq,
             "Ingreso Bruto (Q)": ingresoBruto,
             "Utilidad Neta (Q)": utilidadNeta,
-            "ROI (%)": roi.toFixed(1)
+            "ROI (%)": roi
           },
           {
             "Escenario": "Pesimista: Déficit hídrico o canícula",
-            "Rendimiento (qq/mz)": (65.0 * 0.45).toFixed(1),
-            "Producción Total (qq)": (65.0 * 0.45 * mz).toFixed(1),
-            "Ingreso Bruto (Q)": 65.0 * 0.45 * mz * precioMAGA,
-            "Utilidad Neta (Q)": (65.0 * 0.45 * mz * precioMAGA) - inversionQ,
-            "ROI (%)": (((65.0 * 0.45 * mz * precioMAGA - inversionQ) / inversionQ) * 100).toFixed(1)
+            "Rendimiento (qq/mz)": +(65.0 * 0.45).toFixed(1),
+            "Producción Total (qq)": +(65.0 * 0.45 * mz).toFixed(1),
+            "Ingreso Bruto (Q)": +(65.0 * 0.45 * mz * precioMAGA).toFixed(2),
+            "Utilidad Neta (Q)": +((65.0 * 0.45 * mz * precioMAGA) - inversionQ).toFixed(2),
+            "ROI (%)": +((((65.0 * 0.45 * mz * precioMAGA) - inversionQ) / inversionQ) * 100).toFixed(1)
           }
         ]
       },
       timeline: {
-        days: Array.from({length: 60}, (_, i) => i + 1),
-        precipDaily: Array.from({length: 60}, () => +(Math.random() * 8).toFixed(1)),
-        precipAcc: Array.from({length: 60}, (_, i) => +(i * 4.5).toFixed(1)),
-        etcAcc: Array.from({length: 60}, (_, i) => +(i * 3.8).toFixed(1)),
-        soilFrac: Array.from({length: 60}, () => +(0.4 + Math.random() * 0.4).toFixed(2))
+        days: timelineDays,
+        precipDaily: timelinePrecipDaily,
+        precipAcc: timelinePrecipAcc,
+        etcAcc: timelineEtcAcc,
+        soilFrac: timelineSoilFrac
       },
       criterios_algoritmo: {
         eta_etc_min: 0.90,
@@ -1110,6 +1244,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function computeMonthlyRainfallAnalysis(sowingDate, faseEnso = 'Neutral') {
     const d = new Date(`${sowingDate}T00:00:00`);
+    const year = d.getFullYear();
     const m = d.getMonth() + 1; // 1-12
     
     const CLIMA_JUTIAPA = {
@@ -1134,7 +1269,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const next = CLIMA_JUTIAPA[nextIdx];
 
     let ensoLabel = 'Fase Climática Neutral';
-    let ensoDesc = `Bajo condiciones Neutrales, la precipitación en ${curr.nombre} se mantiene cercana a su media histórica de ${curr.precip.toFixed(1)} mm.`;
+    let ensoDesc = `Condiciones agrometeorológicas en ${curr.nombre} con precipitación esperada de ${curr.precip.toFixed(1)} mm.`;
     
     const faseLower = (faseEnso || '').toLowerCase();
     if (faseLower.includes('nina') || faseLower.includes('niña')) {
@@ -1147,13 +1282,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let conclusion = '';
     if (m === 10) {
-      conclusion = `Aunque en Octubre se registra un AUMENTO de lluvias (${curr.precip.toFixed(1)} mm) impulsado por temporales de fin de temporada y ciclones, sembrar maíz en esta fecha conlleva un riesgo severo. El ciclo del maíz blanco requiere entre 60 y 90 días: la planta germinará con alta humedad, pero sufrirá un DÉFICIT HÍDRICO TERMINAL en noviembre y diciembre durante la floración y el llenado de grano, cuando las lluvias caen bruscamente a menos de 1 mm diario.`;
+      conclusion = `En Octubre el modelo computa un total de ${curr.precip.toFixed(1)} mm (con ${curr.d1.toFixed(1)} mm en la primera decena y ${curr.d2.toFixed(1)} mm en la segunda), impulsado por temporales de fin de temporada y actividad ciclónica. Sin embargo, sembrar maíz en esta fecha conlleva un RIESGO SEVERO DE FRACASO: el maíz blanco requiere entre 60 y 90 días de agua constante. La planta germinará con alta humedad en octubre, pero sufrirá un DÉFICIT HÍDRICO TERMINAL en noviembre (${prev.precip.toFixed(1)} mm) y diciembre (estiaje severo) durante la floración y el llenado de grano.`;
     } else if (m === 5 || m === 6) {
-      conclusion = `En ${curr.nombre} se presenta un AUMENTO SIGNIFICATIVO de precipitaciones (${curr.precip.toFixed(1)} mm), correspondiente a la ventana óptima de Siembra de Primera. Hay garantía de humedad edáfica para la germinación y desarrollo vegetativo vigoroso.`;
+      conclusion = `En ${curr.nombre} se registra ${curr.precip.toFixed(1)} mm, correspondiente a la ventana de Siembra de Primera. Hay disponibilidad de humedad para germinación y desarrollo vegetativo temprano.`;
     } else if (m === 7) {
-      conclusion = `En Julio ocurre una reducción relativa de lluvia (${curr.precip.toFixed(1)} mm) debido a la Canícula de medio año. Se recomienda calibrar la fecha hacia la siembra de Postrera en Agosto o emplear variedades precoces tolerantes a estrés.`;
-    } else if (m === 8 || m === 9) {
-      conclusion = `En ${curr.nombre} se registra un AUMENTO ELEVADO de precipitaciones (${curr.precip.toFixed(1)} mm) característico de la temporada de Postrera. Excelente disponibilidad hídrica, debiendo vigilar drenajes en parcelas con alta retención para evitar asfixia radicular.`;
+      conclusion = `En Julio se registra ${curr.precip.toFixed(1)} mm debido a la Canícula de medio año. Se recomienda calibrar la fecha hacia la siembra de Postrera en Agosto o emplear variedades precoces tolerantes a estrés.`;
+    } else if (m === 8) {
+      conclusion = `En Agosto se registra el inicio de la temporada de Postrera (${curr.precip.toFixed(1)} mm). Monitorear la recuperación de humedad edáfica tras la canícula antes de sembrar.`;
+    } else if (m === 9) {
+      conclusion = `En Septiembre se registra un régimen elevado de precipitaciones (${curr.precip.toFixed(1)} mm) característico de Postrera. Excelente disponibilidad hídrica, vigilando drenajes en zonas bajas.`;
     } else {
       conclusion = `En ${curr.nombre} existe un DÉFICIT SEVERO de precipitaciones (${curr.precip.toFixed(1)} mm) correspondiente al periodo seco o de estiaje. La siembra a temporal es inviable sin suministro de riego complementario.`;
     }

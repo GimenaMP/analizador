@@ -1,0 +1,9 @@
+{
+  "name": "agro-jutiapa-analizador",
+  "version": "2.0.0",
+  "description": "Sistema de Viabilidad Agrometeorológica y Siembra de Maíz para Jutiapa, Guatemala",
+  "type": "module",
+  "scripts": {
+    "start": "python server.py"
+  }
+}

@@ -1,0 +1,14 @@
+# Python backend local y modelos pesados para ignorar en Vercel
+server.py
+main.py
+pipeline.py
+requirements.txt
+core/
+config/
+reporting/
+output/
+scratch/
+.cache/
+.venv/
+__pycache__/
+*.pyc

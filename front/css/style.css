@@ -2284,6 +2284,162 @@ body {
   border-bottom-color: #FEE2E2 !important;
 }
 
+/* Análisis Pluviométrico del Mes Seleccionado */
+.rainfall-subhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  margin-bottom: 12px;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+}
+
+.decades-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.decade-card {
+  background: #F8FAFC;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.decade-card:hover {
+  background: #FFFFFF;
+  border-color: rgba(2, 132, 199, 0.35);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.06);
+  transform: translateY(-1px);
+}
+
+.decade-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.decade-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.decade-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(2, 132, 199, 0.1);
+  color: #0284C7;
+}
+
+.decade-amount {
+  font-family: var(--font-mono);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0369A1;
+  display: block;
+}
+
+.decade-desc {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin-top: 4px;
+}
+
+.climate-impact-box {
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  margin-top: 14px;
+}
+
+.climate-impact-box.deficit {
+  background: #FEF2F2;
+  border-color: #FECACA;
+}
+
+.climate-impact-box.neutral {
+  background: #F8FAFC;
+  border-color: #E2E8F0;
+}
+
+.climate-impact-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #15803D;
+  margin-bottom: 8px;
+}
+
+.climate-impact-box.deficit .climate-impact-title {
+  color: #B91C1C;
+}
+
+.climate-impact-box.neutral .climate-impact-title {
+  color: #0F172A;
+}
+
+.climate-impact-text {
+  font-size: 0.85rem;
+  color: #334155;
+  line-height: 1.55;
+  margin-bottom: 8px;
+}
+
+.climate-impact-text:last-child {
+  margin-bottom: 0;
+}
+
+.clean-data-table tr.highlight-selected-month {
+  background: rgba(2, 132, 199, 0.06) !important;
+  font-weight: 700;
+}
+
+.clean-data-table tr.highlight-selected-month td {
+  color: #0369A1 !important;
+  border-top: 1.5px solid rgba(2, 132, 199, 0.25);
+  border-bottom: 1.5px solid rgba(2, 132, 199, 0.25);
+}
+
+.badge-tag-rain {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-left: 6px;
+}
+
+.badge-tag-rain.aumento {
+  background: #DCFCE7;
+  color: #15803D;
+}
+
+.badge-tag-rain.deficit {
+  background: #FEE2E2;
+  color: #B91C1C;
+}
+
+.badge-tag-rain.moderado {
+  background: #FEF9C3;
+  color: #A16207;
+}
+
 /* Barra Flotante de Descarga PDF */
 .pdf-export-strip {
   display: flex;

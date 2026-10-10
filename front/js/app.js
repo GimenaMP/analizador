@@ -721,6 +721,10 @@ document.addEventListener('DOMContentLoaded', () => {
       waterChart.update(data.timeline);
     }
 
+    // 2.1 Análisis Pluviométrico del Mes Seleccionado (Déficit vs Aumento de Lluvias)
+    const rainAnalysis = data.analisis_pluviometrico || computeMonthlyRainfallAnalysis(data.sowing_date, data.fase_enso);
+    renderMonthlyRainfallAnalysis(rainAnalysis);
+
     // 3. Plano a escala del Terreno con Forma Real (RF-05)
     const terr = data.terreno;
     terrainVis.setPolygon(
@@ -1020,7 +1024,178 @@ document.addEventListener('DOMContentLoaded', () => {
         disponible: false,
         resultado_real: "Fecha futura o periodo sin cierre de 60 días"
       },
+      analisis_pluviometrico: computeMonthlyRainfallAnalysis(p.date, 'Neutral'),
       report_pdf_path: 'Informe_Viabilidad_Maiz_Jutiapa.pdf'
+    };
+  }
+
+  // ==============================================================================
+  // 9. RENDERIZADO Y ALGORITMO DE ANÁLISIS PLUVIOMÉTRICO (DÉFICIT / AUMENTO)
+  // ==============================================================================
+
+  function renderMonthlyRainfallAnalysis(analysis) {
+    if (!analysis) return;
+
+    const titleEl = document.getElementById('rainfallAnalysisTitle');
+    const badgeEl = document.getElementById('rainfallAnalysisBadge');
+    const tableBodyEl = document.getElementById('rainfallAnalysisTableBody');
+    const distTitleEl = document.getElementById('rainfallDistributionTitle');
+    const decadesGridEl = document.getElementById('rainfallDecadesGrid');
+    const impactBoxEl = document.getElementById('climateImpactBox');
+    const impactContentEl = document.getElementById('climateImpactContent');
+
+    if (titleEl) titleEl.textContent = analysis.pregunta_titulo;
+    if (badgeEl) {
+      badgeEl.textContent = analysis.diagnostico_badge;
+      badgeEl.className = `box-badge-clean badge-tag-rain ${analysis.badge_tipo || 'aumento'}`;
+    }
+    if (distTitleEl) {
+      distTitleEl.textContent = `Distribución de la lluvia dentro de ${analysis.mes_nombre}`;
+    }
+
+    // 1. Tabla de Mes | Precipitación | Caracterización climática
+    if (tableBodyEl && analysis.tabla_comparativa) {
+      tableBodyEl.innerHTML = analysis.tabla_comparativa.map(row => {
+        const isSelClass = row.es_seleccionado ? 'highlight-selected-month' : '';
+        const tag = row.es_seleccionado ? `<span class="badge-tag-rain ${row.badge || 'aumento'}">Mes evaluado</span>` : '';
+        return `
+          <tr class="${isSelClass}">
+            <td><strong>${row.mes}</strong> ${tag}</td>
+            <td style="text-align: center; font-family: var(--font-mono); font-weight: 700;">${row.precip}</td>
+            <td>${row.caracterizacion}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // 2. Tarjetas de Decenas
+    if (decadesGridEl && analysis.distribucion_decenas) {
+      decadesGridEl.innerHTML = analysis.distribucion_decenas.map(dec => `
+        <div class="decade-card">
+          <div class="decade-card-header">
+            <span class="decade-title">${dec.etiqueta}</span>
+            <span class="decade-badge">${dec.porcentaje} del mes</span>
+          </div>
+          <span class="decade-amount">${dec.mm} mm</span>
+          <div style="font-size: 0.76rem; font-weight: 600; color: var(--text-primary); margin-top: 2px;">${dec.rango}</div>
+          <p class="decade-desc">${dec.detalle}</p>
+        </div>
+      `).join('');
+    }
+
+    // 3. Impacto Climático y Conclusiones del Modelo
+    if (impactBoxEl) {
+      if (analysis.badge_tipo === 'deficit') {
+        impactBoxEl.className = 'climate-impact-box deficit';
+      } else if (analysis.badge_tipo === 'moderado') {
+        impactBoxEl.className = 'climate-impact-box neutral';
+      } else {
+        impactBoxEl.className = 'climate-impact-box';
+      }
+    }
+
+    if (impactContentEl) {
+      impactContentEl.innerHTML = `
+        <p class="climate-impact-text">
+          <strong>Impacto de Fase Climática (${analysis.impacto_evento?.titulo || 'ENSO'}):</strong> 
+          ${analysis.impacto_evento?.descripcion || ''}
+        </p>
+        <p class="climate-impact-text" style="margin-top: 8px;">
+          <strong>Conclusiones del Modelo para el Cultivo de Maíz Blanco:</strong> 
+          ${analysis.conclusiones_modelo || ''}
+        </p>
+      `;
+    }
+  }
+
+  function computeMonthlyRainfallAnalysis(sowingDate, faseEnso = 'Neutral') {
+    const d = new Date(`${sowingDate}T00:00:00`);
+    const m = d.getMonth() + 1; // 1-12
+    
+    const CLIMA_JUTIAPA = {
+      1: { nombre: 'Enero', precip: 3.0, tipo: 'Déficit Extremo', caract: 'Época Seca Severa (Estiaje)', d1: 1.2, d2: 0.9, d3: 1.0, badge: 'deficit', ultDia: 31 },
+      2: { nombre: 'Febrero', precip: 5.1, tipo: 'Déficit Extremo', caract: 'Época Seca Severa (Estiaje)', d1: 1.1, d2: 1.9, d3: 2.1, badge: 'deficit', ultDia: 28 },
+      3: { nombre: 'Marzo', precip: 17.7, tipo: 'Déficit Extremo', caract: 'Época Seca Severa (Estiaje)', d1: 3.3, d2: 7.0, d3: 7.4, badge: 'deficit', ultDia: 31 },
+      4: { nombre: 'Abril', precip: 59.5, tipo: 'Déficit Moderado', caract: 'Transición hacia Época Lluviosa', d1: 13.0, d2: 18.5, d3: 28.1, badge: 'deficit', ultDia: 30 },
+      5: { nombre: 'Mayo', precip: 215.2, tipo: 'Aumento de Lluvias', caract: 'Establecimiento de Temporada Lluviosa', d1: 43.7, d2: 59.9, d3: 111.7, badge: 'aumento', ultDia: 31 },
+      6: { nombre: 'Junio', precip: 318.2, tipo: 'Aumento Significativo', caract: 'Pico Máximo de Siembra de Primera', d1: 110.1, d2: 112.6, d3: 95.5, badge: 'aumento', ultDia: 30 },
+      7: { nombre: 'Julio', precip: 189.7, tipo: 'Régimen Moderado', caract: 'Disminución Temporal por Canícula', d1: 68.8, d2: 59.0, d3: 61.9, badge: 'moderado', ultDia: 31 },
+      8: { nombre: 'Agosto', precip: 247.5, tipo: 'Aumento de Lluvias', caract: 'Temporada Lluviosa Intensa (Postrera)', d1: 66.6, d2: 78.0, d3: 102.9, badge: 'aumento', ultDia: 31 },
+      9: { nombre: 'Septiembre', precip: 343.3, tipo: 'Aumento Significativo', caract: 'Pico Máximo Anual de Precipitaciones', d1: 98.0, d2: 104.0, d3: 141.2, badge: 'aumento', ultDia: 30 },
+      10: { nombre: 'Octubre', precip: 261.2, tipo: 'Aumento de Lluvias', caract: 'Temporada Ciclónica y Retiro de Lluvias', d1: 113.6, d2: 88.4, d3: 59.2, badge: 'aumento', ultDia: 31 },
+      11: { nombre: 'Noviembre', precip: 58.4, tipo: 'Déficit Moderado', caract: 'Transición hacia Época Seca', d1: 31.5, d2: 18.2, d3: 8.8, badge: 'deficit', ultDia: 30 },
+      12: { nombre: 'Diciembre', precip: 9.0, tipo: 'Déficit Extremo', caract: 'Época Seca Severa (Estiaje)', d1: 3.4, d2: 2.9, d3: 2.7, badge: 'deficit', ultDia: 31 }
+    };
+
+    const curr = CLIMA_JUTIAPA[m];
+    const prevIdx = ((m - 2 + 12) % 12) + 1;
+    const nextIdx = (m % 12) + 1;
+    const prev = CLIMA_JUTIAPA[prevIdx];
+    const next = CLIMA_JUTIAPA[nextIdx];
+
+    let ensoLabel = 'Fase Climática Neutral';
+    let ensoDesc = `Bajo condiciones Neutrales, la precipitación en ${curr.nombre} se mantiene cercana a su media histórica de ${curr.precip.toFixed(1)} mm.`;
+    
+    const faseLower = (faseEnso || '').toLowerCase();
+    if (faseLower.includes('nina') || faseLower.includes('niña')) {
+      ensoLabel = 'La Niña / Alta Influencia Ciclónica';
+      ensoDesc = `En fases de La Niña o temporales ciclónicos en el Caribe, las lluvias de ${curr.nombre} en Jutiapa se incrementan en promedio +19.7%, alcanzando aproximadamente ${(curr.precip * 1.197).toFixed(1)} mm.`;
+    } else if (faseLower.includes('nino') || faseLower.includes('niño')) {
+      ensoLabel = 'El Niño / Déficit Pluviométrico';
+      ensoDesc = `En fases de El Niño, se presenta una reducción de lluvias de aproximadamente -22.5%, proyectando ${(curr.precip * 0.775).toFixed(1)} mm con riesgo de adelanto de canícula o retiro prematuro de humedad.`;
+    }
+
+    let conclusion = '';
+    if (m === 10) {
+      conclusion = `Aunque en Octubre se registra un AUMENTO de lluvias (${curr.precip.toFixed(1)} mm) impulsado por temporales de fin de temporada y ciclones, sembrar maíz en esta fecha conlleva un riesgo severo. El ciclo del maíz blanco requiere entre 60 y 90 días: la planta germinará con alta humedad, pero sufrirá un DÉFICIT HÍDRICO TERMINAL en noviembre y diciembre durante la floración y el llenado de grano, cuando las lluvias caen bruscamente a menos de 1 mm diario.`;
+    } else if (m === 5 || m === 6) {
+      conclusion = `En ${curr.nombre} se presenta un AUMENTO SIGNIFICATIVO de precipitaciones (${curr.precip.toFixed(1)} mm), correspondiente a la ventana óptima de Siembra de Primera. Hay garantía de humedad edáfica para la germinación y desarrollo vegetativo vigoroso.`;
+    } else if (m === 7) {
+      conclusion = `En Julio ocurre una reducción relativa de lluvia (${curr.precip.toFixed(1)} mm) debido a la Canícula de medio año. Se recomienda calibrar la fecha hacia la siembra de Postrera en Agosto o emplear variedades precoces tolerantes a estrés.`;
+    } else if (m === 8 || m === 9) {
+      conclusion = `En ${curr.nombre} se registra un AUMENTO ELEVADO de precipitaciones (${curr.precip.toFixed(1)} mm) característico de la temporada de Postrera. Excelente disponibilidad hídrica, debiendo vigilar drenajes en parcelas con alta retención para evitar asfixia radicular.`;
+    } else {
+      conclusion = `En ${curr.nombre} existe un DÉFICIT SEVERO de precipitaciones (${curr.precip.toFixed(1)} mm) correspondiente al periodo seco o de estiaje. La siembra a temporal es inviable sin suministro de riego complementario.`;
+    }
+
+    return {
+      mes_nombre: curr.nombre,
+      pregunta_titulo: `¿Hay déficit o aumento de lluvias en ${curr.nombre}?`,
+      diagnostico_badge: curr.tipo,
+      badge_tipo: curr.badge,
+      tabla_comparativa: [
+        { mes: prev.nombre, precip: `${prev.precip.toFixed(1)} mm`, caracterizacion: prev.caract, es_seleccionado: false, badge: prev.badge },
+        { mes: curr.nombre, precip: `${curr.precip.toFixed(1)} mm`, caracterizacion: curr.caract, es_seleccionado: true, badge: curr.badge },
+        { mes: next.nombre, precip: `${next.precip.toFixed(1)} mm`, caracterizacion: next.caract, es_seleccionado: false, badge: next.badge }
+      ],
+      distribucion_decenas: [
+        {
+          rango: `1 a 10 de ${curr.nombre}`,
+          etiqueta: 'Primera decena',
+          mm: curr.d1.toFixed(1),
+          porcentaje: `${((curr.d1 / curr.precip) * 100).toFixed(1)}%`,
+          detalle: m === 10 ? 'Pico concentrado de lluvias por ondas del este y actividad ciclónica.' : (curr.d1 >= 80 ? 'Intensidad alta de precipitación continua.' : 'Lluvias moderadas de inicio de mes.')
+        },
+        {
+          rango: `11 a 20 de ${curr.nombre}`,
+          etiqueta: 'Segunda decena',
+          mm: curr.d2.toFixed(1),
+          porcentaje: `${((curr.d2 / curr.precip) * 100).toFixed(1)}%`,
+          detalle: m === 10 ? 'Lluvias regulares con tendencia gradual decreciente.' : (curr.d2 >= 80 ? 'Régimen pluviométrico sostenido.' : 'Aporte hídrico regular.')
+        },
+        {
+          rango: `21 al ${curr.ultDia} de ${curr.nombre}`,
+          etiqueta: 'Tercera decena',
+          mm: curr.d3.toFixed(1),
+          porcentaje: `${((curr.d3 / curr.precip) * 100).toFixed(1)}%`,
+          detalle: m === 10 ? 'Desplome marcado de lluvias e inicio de la retirada de la temporada.' : (curr.d3 >= 80 ? 'Precipitaciones abundantes de fin de mes.' : 'Tendencia a disminución hacia el siguiente mes.')
+        }
+      ],
+      impacto_evento: {
+        titulo: ensoLabel,
+        descripcion: ensoDesc
+      },
+      conclusiones_modelo: conclusion
     };
   }
 });

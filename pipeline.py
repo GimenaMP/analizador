@@ -42,6 +42,7 @@ from core.agronomy_economics import (
     TerrainModel,
     calculate_sowing_density,
     calculate_financial_projection,
+    calcular_analisis_pluviometrico,
 )
 from reporting.visualizer import (
     plot_water_balance_window,
@@ -421,6 +422,7 @@ class AgroViabilityPipeline:
             },
             "densidad": densidad,
             "financiero": financiero,
+            "analisis_pluviometrico": calcular_analisis_pluviometrico(sowing_date_str, fase),
         }
 
         pdf_path = None

@@ -310,3 +310,77 @@ def calculate_financial_projection(
         "pnl_items": pnl_items,
         "escenarios_sensibilidad": escenarios,
     }
+
+
+def calcular_analisis_pluviometrico(fecha_siembra: str, fase_enso: str = "Neutral") -> Dict[str, Any]:
+    """
+    Calcula el análisis pluviométrico del mes seleccionado y su distribución por decenas
+    a partir de las estadísticas históricas de 46 años de ERA5 para Jutiapa.
+    """
+    import datetime
+    try:
+        dt = datetime.datetime.strptime(str(fecha_siembra).split("T")[0], "%Y-%m-%d")
+        m = dt.month
+    except Exception:
+        m = 10
+
+    CLIMA_JUTIAPA = {
+        1: {"nombre": "Enero", "precip": 3.0, "tipo": "Déficit Extremo", "caract": "Época Seca Severa (Estiaje)", "d1": 1.2, "d2": 0.9, "d3": 1.0, "ultDia": 31},
+        2: {"nombre": "Febrero", "precip": 5.1, "tipo": "Déficit Extremo", "caract": "Época Seca Severa (Estiaje)", "d1": 1.1, "d2": 1.9, "d3": 2.1, "ultDia": 28},
+        3: {"nombre": "Marzo", "precip": 17.7, "tipo": "Déficit Extremo", "caract": "Época Seca Severa (Estiaje)", "d1": 3.3, "d2": 7.0, "d3": 7.4, "ultDia": 31},
+        4: {"nombre": "Abril", "precip": 59.5, "tipo": "Déficit Moderado", "caract": "Transición hacia Época Lluviosa", "d1": 13.0, "d2": 18.5, "d3": 28.1, "ultDia": 30},
+        5: {"nombre": "Mayo", "precip": 215.2, "tipo": "Aumento de Lluvias", "caract": "Establecimiento de Temporada Lluviosa", "d1": 43.7, "d2": 59.9, "d3": 111.7, "ultDia": 31},
+        6: {"nombre": "Junio", "precip": 318.2, "tipo": "Aumento Significativo", "caract": "Pico Máximo de Siembra de Primera", "d1": 110.1, "d2": 112.6, "d3": 95.5, "ultDia": 30},
+        7: {"nombre": "Julio", "precip": 189.7, "tipo": "Régimen Moderado", "caract": "Disminución Temporal por Canícula", "d1": 68.8, "d2": 59.0, "d3": 61.9, "ultDia": 31},
+        8: {"nombre": "Agosto", "precip": 247.5, "tipo": "Aumento de Lluvias", "caract": "Temporada Lluviosa Intensa (Postrera)", "d1": 66.6, "d2": 78.0, "d3": 102.9, "ultDia": 31},
+        9: {"nombre": "Septiembre", "precip": 343.3, "tipo": "Aumento Significativo", "caract": "Pico Máximo Anual de Precipitaciones", "d1": 98.0, "d2": 104.0, "d3": 141.2, "ultDia": 30},
+        10: {"nombre": "Octubre", "precip": 261.2, "tipo": "Aumento de Lluvias", "caract": "Temporada Ciclónica y Retiro de Lluvias", "d1": 113.6, "d2": 88.4, "d3": 59.2, "ultDia": 31},
+        11: {"nombre": "Noviembre", "precip": 58.4, "tipo": "Déficit Moderado", "caract": "Transición hacia Época Seca", "d1": 31.5, "d2": 18.2, "d3": 8.8, "ultDia": 30},
+        12: {"nombre": "Diciembre", "precip": 9.0, "tipo": "Déficit Extremo", "caract": "Época Seca Severa (Estiaje)", "d1": 3.4, "d2": 2.9, "d3": 2.7, "ultDia": 31},
+    }
+
+    curr = CLIMA_JUTIAPA[m]
+    prev_idx = ((m - 2 + 12) % 12) + 1
+    next_idx = (m % 12) + 1
+    prev = CLIMA_JUTIAPA[prev_idx]
+    next_m = CLIMA_JUTIAPA[next_idx]
+
+    fase_l = (fase_enso or "").lower()
+    if "nina" in fase_l or "niña" in fase_l:
+        enso_label = "La Niña / Alta Influencia Ciclónica"
+        enso_desc = f"En fases de La Niña o temporales ciclónicos en el Caribe, las lluvias de {curr['nombre']} en Jutiapa se incrementan en promedio +19.7%, alcanzando aproximadamente {curr['precip'] * 1.197:.1f} mm."
+    elif "nino" in fase_l or "niño" in fase_l:
+        enso_label = "El Niño / Déficit Pluviométrico"
+        enso_desc = f"En fases de El Niño, se presenta una reducción de lluvias de aproximadamente -22.5%, proyectando {curr['precip'] * 0.775:.1f} mm con riesgo de adelanto de canícula o retiro prematuro de humedad."
+    else:
+        enso_label = "Fase Climática Neutral"
+        enso_desc = f"Bajo condiciones Neutrales, la precipitación en {curr['nombre']} se mantiene cercana a su media histórica de {curr['precip']:.1f} mm."
+
+    if m == 10:
+        conclusion = f"Aunque en Octubre se registra un AUMENTO de lluvias ({curr['precip']:.1f} mm) impulsado por temporales y ciclones, sembrar maíz en esta fecha conlleva un riesgo severo. El ciclo del maíz blanco requiere entre 60 y 90 días: la planta germinará con alta humedad, pero enfrentará un DÉFICIT HÍDRICO TERMINAL en noviembre y diciembre durante la floración y el llenado de grano, cuando las lluvias caen bruscamente a menos de 1 mm diario."
+    elif m in (5, 6):
+        conclusion = f"En {curr['nombre']} se presenta un AUMENTO SIGNIFICATIVO de precipitaciones ({curr['precip']:.1f} mm), correspondiente a la ventana óptima de Siembra de Primera. Hay garantía de humedad edáfica para la germinación y desarrollo vegetativo vigoroso."
+    elif m == 7:
+        conclusion = f"En Julio ocurre una reducción relativa de lluvia ({curr['precip']:.1f} mm) debido a la Canícula de medio año. Se recomienda calibrar la fecha hacia la siembra de Postrera en Agosto o emplear variedades precoces tolerantes a estrés."
+    elif m in (8, 9):
+        conclusion = f"En {curr['nombre']} se registra un AUMENTO ELEVADO de precipitaciones ({curr['precip']:.1f} mm) característico de la temporada de Postrera. Excelente disponibilidad hídrica, debiendo vigilar drenajes en parcelas con alta retención para evitar asfixia radicular."
+    else:
+        conclusion = f"En {curr['nombre']} existe un DÉFICIT SEVERO de precipitaciones ({curr['precip']:.1f} mm) correspondiente al periodo seco o de estiaje. La siembra a temporal es inviable sin suministro de riego complementario."
+
+    return {
+        "mes_nombre": curr["nombre"],
+        "pregunta_titulo": f"¿Hay déficit o aumento de lluvias en {curr['nombre']}?",
+        "diagnostico_badge": curr["tipo"],
+        "tabla_comparativa": [
+            {"mes": prev["nombre"], "precip": f"{prev['precip']:.1f} mm", "caracterizacion": prev["caract"], "es_seleccionado": False},
+            {"mes": curr["nombre"], "precip": f"{curr['precip']:.1f} mm", "caracterizacion": curr["caract"], "es_seleccionado": True},
+            {"mes": next_m["nombre"], "precip": f"{next_m['precip']:.1f} mm", "caracterizacion": next_m["caract"], "es_seleccionado": False},
+        ],
+        "distribucion_decenas": [
+            {"rango": f"1 a 10 de {curr['nombre']}", "etiqueta": "Primera decena", "mm": f"{curr['d1']:.1f} mm", "porcentaje": f"{(curr['d1']/curr['precip'])*100:.1f}%", "detalle": "Pico concentrado de lluvias por ondas del este y ciclones." if m == 10 else "Lluvias regulares de inicio de mes."},
+            {"rango": f"11 a 20 de {curr['nombre']}", "etiqueta": "Segunda decena", "mm": f"{curr['d2']:.1f} mm", "porcentaje": f"{(curr['d2']/curr['precip'])*100:.1f}%", "detalle": "Lluvias regulares con tendencia decreciente." if m == 10 else "Aporte hídrico sostenido."},
+            {"rango": f"21 al {curr['ultDia']} de {curr['nombre']}", "etiqueta": "Tercera decena", "mm": f"{curr['d3']:.1f} mm", "porcentaje": f"{(curr['d3']/curr['precip'])*100:.1f}%", "detalle": "Desplome marcado y cese de temporada." if m == 10 else "Precipitaciones de cierre de mes."},
+        ],
+        "impacto_evento": {"titulo": enso_label, "descripcion": enso_desc},
+        "conclusiones_modelo": conclusion,
+    }

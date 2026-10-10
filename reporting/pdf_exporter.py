@@ -380,7 +380,140 @@ def export_pdf_report(
             pdf.cell(29, 4.4, f"Q {util_val:,.2f}  ", border=1, align="R", ln=True)
 
         # ---------------------------------------------------------
-        # PÁGINA 2: ANEXOS TÉCNICOS Y GRÁFICOS
+        # PÁGINA 2: ANÁLISIS PLUVIOMÉTRICO MENSUAL (DÉFICIT O AUMENTO)
+        # ---------------------------------------------------------
+        rain_analysis = report_data.get("analisis_pluviometrico")
+        if not rain_analysis:
+            from core.agronomy_economics import calcular_analisis_pluviometrico
+            rain_analysis = calcular_analisis_pluviometrico(report_data.get("fecha_siembra", "2026-10-01"), report_data.get("fase_enso", "Neutral"))
+
+        pdf.add_page()
+
+        pdf.set_y(24)
+        pdf.set_font("Helvetica", "B", 10.5)
+        pdf.set_text_color(27, 77, 62)
+        pdf.cell(0, 5, _clean_str(f"6. ANÁLISIS PLUVIOMÉTRICO: {rain_analysis.get('pregunta_titulo', 'DÉFICIT O AUMENTO DE LLUVIAS')}").upper(), ln=True)
+
+        pdf.set_font("Helvetica", "I", 7.6)
+        pdf.set_text_color(100, 116, 139)
+        pdf.cell(0, 4, _clean_str("Evaluación del régimen de precipitación comparada contra 46 años de series agroclimáticas ERA5 (1981-Presente)"), ln=True)
+
+        pdf.ln(3)
+
+        # 6.1 Tabla Comparativa de Meses (Mes, Precipitación, Caracterización climática)
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.set_text_color(30, 41, 59)
+        pdf.cell(0, 4.5, _clean_str("Régimen Pluviométrico Comparativo de la Temporada:"), ln=True)
+
+        pdf.set_fill_color(241, 245, 249)
+        pdf.set_draw_color(203, 213, 225)
+        pdf.set_line_width(0.3)
+        pdf.set_font("Helvetica", "B", 7.6)
+        pdf.set_text_color(30, 41, 59)
+        pdf.cell(45, 5, _clean_str("  Mes"), border=1, fill=True)
+        pdf.cell(45, 5, _clean_str("Precipitación  "), border=1, fill=True, align="C")
+        pdf.cell(90, 5, _clean_str("  Caracterización Climática"), border=1, fill=True, ln=True)
+
+        for row in rain_analysis.get("tabla_comparativa", []):
+            is_sel = row.get("es_seleccionado", False)
+            if is_sel:
+                pdf.set_fill_color(236, 253, 245)
+                pdf.set_text_color(6, 95, 70)
+                pdf.set_font("Helvetica", "B", 7.8)
+                prefix = "  * "
+            else:
+                pdf.set_fill_color(255, 255, 255)
+                pdf.set_text_color(15, 23, 42)
+                pdf.set_font("Helvetica", "", 7.5)
+                prefix = "  "
+
+            pdf.cell(45, 4.8, _clean_str(f"{prefix}{row.get('mes', '')}"), border=1, fill=is_sel)
+            pdf.cell(45, 4.8, _clean_str(f"{row.get('precip', '')}  "), border=1, fill=is_sel, align="C")
+            pdf.cell(90, 4.8, _clean_str(f"  {row.get('caracterizacion', '')}"), border=1, fill=is_sel, ln=True)
+
+        pdf.ln(4)
+
+        # 6.2 Distribución de la Lluvia dentro del Mes (Decenas)
+        pdf.set_font("Helvetica", "B", 8.2)
+        pdf.set_text_color(27, 77, 62)
+        pdf.cell(0, 4.5, _clean_str(f"Distribución de la Precipitación dentro de {rain_analysis.get('mes_nombre', 'el mes evaluado')}:"), ln=True)
+
+        d_box_w = 57.3
+        d_box_h = 25
+        d_gap = 4.0
+        d_start_x = 15
+        d_box_y = pdf.get_y() + 1
+
+        for idx, dec in enumerate(rain_analysis.get("distribucion_decenas", [])):
+            cx = d_start_x + idx * (d_box_w + d_gap)
+            pdf.set_fill_color(248, 250, 252)
+            pdf.set_draw_color(226, 232, 240)
+            pdf.set_line_width(0.3)
+            pdf.rect(cx, d_box_y, d_box_w, d_box_h, "DF")
+
+            pdf.set_xy(cx + 2, d_box_y + 1.8)
+            pdf.set_font("Helvetica", "B", 7)
+            pdf.set_text_color(100, 116, 139)
+            pdf.cell(d_box_w - 4, 3.2, _clean_str(f"{dec.get('etiqueta', '')} ({dec.get('porcentaje', '')})"), ln=True, align="C")
+
+            pdf.set_xy(cx + 2, d_box_y + 5.5)
+            pdf.set_font("Helvetica", "B", 10.5)
+            pdf.set_text_color(3, 105, 161)
+            pdf.cell(d_box_w - 4, 5, _clean_str(dec.get("mm", "")), ln=True, align="C")
+
+            pdf.set_xy(cx + 2, d_box_y + 11.2)
+            pdf.set_font("Helvetica", "B", 6.8)
+            pdf.set_text_color(15, 23, 42)
+            pdf.cell(d_box_w - 4, 3.2, _clean_str(dec.get("rango", "")), ln=True, align="C")
+
+            pdf.set_xy(cx + 2, d_box_y + 15)
+            pdf.set_font("Helvetica", "", 6.4)
+            pdf.set_text_color(71, 85, 105)
+            pdf.multi_cell(d_box_w - 4, 2.7, _clean_str(dec.get("detalle", "")), align="C")
+
+        pdf.set_y(d_box_y + d_box_h + 5)
+
+        # 6.3 Impacto de Evento Climático (ENSO / Ciclones)
+        imp = rain_analysis.get("impacto_evento", {})
+        pdf.set_fill_color(240, 253, 244)
+        pdf.set_draw_color(187, 247, 208)
+        pdf.set_line_width(0.3)
+        imp_y = pdf.get_y()
+        pdf.rect(15, imp_y, 180, 22, "DF")
+
+        pdf.set_xy(18, imp_y + 2)
+        pdf.set_font("Helvetica", "B", 7.8)
+        pdf.set_text_color(21, 128, 61)
+        pdf.cell(174, 3.8, _clean_str(f"IMPACTO DEL EVENTO CLIMÁTICO OBSERVADO: {imp.get('titulo', 'ENSO')}"), ln=True)
+
+        pdf.set_xy(18, imp_y + 6.8)
+        pdf.set_font("Helvetica", "", 7.2)
+        pdf.set_text_color(51, 65, 85)
+        pdf.multi_cell(174, 3.4, _clean_str(imp.get("descripcion", "")))
+
+        # 6.4 Conclusiones del Modelo para el Cultivo de Maíz Blanco
+        pdf.set_y(imp_y + 26)
+        conc_bg = (254, 242, 242) if sem_color == "Rojo" else (248, 250, 252)
+        conc_border = (254, 202, 202) if sem_color == "Rojo" else (226, 232, 240)
+        conc_text = (185, 28, 28) if sem_color == "Rojo" else (27, 77, 62)
+
+        pdf.set_fill_color(*conc_bg)
+        pdf.set_draw_color(*conc_border)
+        conc_y = pdf.get_y()
+        pdf.rect(15, conc_y, 180, 32, "DF")
+
+        pdf.set_xy(18, conc_y + 2.5)
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.set_text_color(*conc_text)
+        pdf.cell(174, 4, _clean_str("CONCLUSIONES Y DICTAMEN DEL MODELO PARA EL CICLO DE MAÍZ BLANCO:"), ln=True)
+
+        pdf.set_xy(18, conc_y + 7.5)
+        pdf.set_font("Helvetica", "", 7.3)
+        pdf.set_text_color(30, 41, 59)
+        pdf.multi_cell(174, 3.6, _clean_str(rain_analysis.get("conclusiones_modelo", "")))
+
+        # ---------------------------------------------------------
+        # PÁGINA 3: ANEXOS TÉCNICOS Y GRÁFICOS
         # ---------------------------------------------------------
         if chart_paths:
             pdf.add_page()
@@ -388,7 +521,7 @@ def export_pdf_report(
             pdf.set_y(24)
             pdf.set_font("Helvetica", "B", 9.5)
             pdf.set_text_color(27, 77, 62)
-            pdf.cell(0, 5, "6. ANEXOS TÉCNICOS: BALANCE HÍDRICO Y PLANO GEOMÉTRICO", ln=True)
+            pdf.cell(0, 5, "7. ANEXOS TÉCNICOS: BALANCE HÍDRICO Y PLANO GEOMÉTRICO", ln=True)
 
             wb_path = chart_paths.get("water_balance")
             ter_path = chart_paths.get("terrain")
@@ -432,6 +565,7 @@ def export_pdf_report(
             pdf.multi_cell(174, 3.3, nota_cierre)
 
         pdf.output(str(pdf_file))
+
         print(f"  [PDF] Informe ejecutivo generado exitosamente en: {pdf_file.name}")
         return pdf_file
 
@@ -505,4 +639,39 @@ def _build_markdown_summary(
         util = esc.get("Utilidad Neta (Q)", esc.get("utilidad_neta", 0))
         md.append(f"| {esc.get('Escenario', '')} | {rend} | {prod} | Q {ingr:,.2f} | Q {util:,.2f} |")
 
+    rain_analysis = data.get("analisis_pluviometrico")
+    if rain_analysis:
+        md.extend([
+            "",
+            "---",
+            "",
+            f"## 5. Análisis Pluviométrico: {rain_analysis.get('pregunta_titulo', 'Déficit o Aumento de Lluvias')}",
+            f"- **Diagnóstico General:** {rain_analysis.get('diagnostico_badge', 'Aumento de Lluvias')}",
+            "",
+            "### Régimen Pluviométrico Comparativo:",
+            "| Mes | Precipitación | Caracterización Climática |",
+            "| :--- | :---: | :--- |",
+        ])
+        for row in rain_analysis.get("tabla_comparativa", []):
+            sel_tag = " (Mes evaluado)" if row.get("es_seleccionado") else ""
+            md.append(f"| {row.get('mes', '')}{sel_tag} | {row.get('precip', '')} | {row.get('caracterizacion', '')} |")
+
+        md.extend([
+            "",
+            f"### Distribución de Precipitación en {rain_analysis.get('mes_nombre', 'el mes')}:",
+        ])
+        for dec in rain_analysis.get("distribucion_decenas", []):
+            md.append(f"- **{dec.get('etiqueta', '')} ({dec.get('rango', '')}):** {dec.get('mm', '')} ({dec.get('porcentaje', '')}) - {dec.get('detalle', '')}")
+
+        imp = rain_analysis.get("impacto_evento", {})
+        md.extend([
+            "",
+            f"### Impacto del Evento Climático ({imp.get('titulo', 'ENSO')}):",
+            imp.get("descripcion", ""),
+            "",
+            "### Conclusiones del Modelo para el Ciclo de Maíz Blanco:",
+            rain_analysis.get("conclusiones_modelo", "")
+        ])
+
     return "\n".join(md)
+

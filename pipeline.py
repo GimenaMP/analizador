@@ -449,8 +449,3 @@ class AgroViabilityPipeline:
             evaluacion_historica=evaluacion_historica,
             report_pdf_path=str(pdf_path) if pdf_path else None
         )
-
-
-# Exportaciones para compatibilidad de escaneo Vercel
-handler = None
-app = None

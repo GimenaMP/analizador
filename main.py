@@ -126,7 +126,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# Exportaciones para compatibilidad de escaneo Vercel
-handler = None
-app = None

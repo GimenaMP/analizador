@@ -1,13 +1,14 @@
 # Documentación Técnica de Arquitectura de Software
 # Sistema Abierto de Viabilidad Agrícola y Proyección Agrometeorológica (AGRO-JUTIAPA)
 
-**Documento:** Manual Técnico y Arquitectura de Software  
-**Versión:** 2.5.0  
+**Documento:** Manual Técnico de Arquitectura de Software y Modelado Agroclimático  
+**Versión:** 2.6.0  
 **Fecha:** Octubre 2026  
 **Ámbito Geográfico Exclusivo:** Calderas, San José Acatempa, Jutiapa, Guatemala  
-**Coordenadas Delimitadas:** Latitud $14.240^\circ\text{ N}$ a $14.290^\circ\text{ N}$, Longitud $-90.160^\circ\text{ W}$ a $-90.110^\circ\text{ W}$  
+**Coordenadas Delimitadas:** Latitud 14.240° N a 14.290° N, Longitud -90.160° W a -90.110° W  
 **Cultivo Específico:** Maíz Blanco de Primera (*Zea mays L.*)  
-**Modalidad de Acceso:** Sistema Público y Abierto (Cero autenticación, sin credenciales)  
+**Modalidad de Acceso:** Sistema Público y Abierto (Cero autenticación, sin gestión de credenciales)  
+**Diagramas Nativos Editables:** Generados con plugin Draw.io en [`docs/diagrams/`](file:///c:/Users/gimen/Downloads/analizador/docs/diagrams/)
 
 ---
 
@@ -30,21 +31,30 @@ A diferencia de las herramientas convencionales basadas en valores estáticos o 
 
 El sistema adopta una arquitectura de micro-servicios desacoplados con soporte para doble entorno de ejecución (**Dual Runtime**): ejecución local mediante un servidor HTTP multihilo en Python y ejecución serverless en la nube mediante Node.js en Vercel.
 
+> [!NOTE]
+> **Diagramas de Arquitectura Nativos de Draw.io Disponibles:**
+> - Diagrama Completo de Arquitectura: [`docs/diagrams/arquitectura_sistema.drawio`](file:///c:/Users/gimen/Downloads/analizador/docs/diagrams/arquitectura_sistema.drawio)
+> - Diagrama de Balance Hídrico y Suelos: [`docs/diagrams/balance_hidrico_fao56.drawio`](file:///c:/Users/gimen/Downloads/analizador/docs/diagrams/balance_hidrico_fao56.drawio)
+> 
+> Estos archivos son 100% nativos y editables abriéndolos en [draw.io](https://app.diagrams.net/) o mediante extensiones de Draw.io en VS Code.
+
+### 2.1. Diagrama de Capas del Sistema (Arquitectura General)
+
 ```mermaid
 flowchart TD
-    subgraph Cliente["Capa de Presentación (Frontend SPA)"]
-        UI["Interfaz Web HTML5 / CSS3 / ES6+"]
-        CAD["Motor CAD de Terreno (terrain.js - Canvas)"]
-        Chart["Visualizador Hídrico (charts.js - Chart.js)"]
+    subgraph Cliente["1. Capa de Presentación (Frontend SPA - front/)"]
+        UI["Interfaz Web Reactiva (HTML5 / CSS3 / Vanilla JS)"]
+        CAD["Motor CAD de Terreno (terrain.js / Canvas)"]
+        Chart["Visualizador Hídrico (charts.js / Chart.js)"]
         PDF_W["Visor y Generador PDF (html2pdf.bundle.min.js)"]
     end
 
-    subgraph API_Gateways["Capa de Enrutamiento y API"]
-        LocalServer["Servidor Python Multihilo (server.py:8000)"]
+    subgraph API_Gateways["2. Capa de Servicios Web (Dual Runtime)"]
+        LocalServer["Servidor Python Multihilo (server.py :8000)"]
         VercelFunc["Serverless Functions Node.js (api/analyze.js & maga-price.js)"]
     end
 
-    subgraph Core_Engine["Motor Analítico Central (core/)"]
+    subgraph Core_Engine["3. Motor Analítico Central (core/)"]
         Val["Validador y Sanitizador (input_validator.py)"]
         Fetcher["Ingesta Meteorológica (data_fetcher.py)"]
         Soil["Física de Suelos y Balance FAO-56 (soil_balance.py)"]
@@ -54,10 +64,11 @@ flowchart TD
         Scraper["Scraper Precios MAGA (maga_scraper.py)"]
     end
 
-    subgraph Data_Sources["Fuentes de Datos Externas"]
-        OpenMeteo["Open-Meteo Archive API (ERA5 Reanalysis)"]
-        NOAA["NOAA PSL (MEI v2 / Niño 3.4)"]
-        MAGA["MAGA DIPLAN / SIMPA (Precios Diarios)"]
+    subgraph Data_Sources["4. Fuentes de Datos Oficiales Externas"]
+        OpenMeteo["Open-Meteo Archive API (ERA5 Reanalysis 1981-Presente)"]
+        NOAA["NOAA PSL (MEI v2 / Niño 3.4 Anomalies)"]
+        MAGA["MAGA DIPLAN / SIMPA (Precios Diarios Mayoristas)"]
+        CacheDisk["Persistencia en Caché Local (.cache/*.csv)"]
     end
 
     UI --> LocalServer
@@ -65,16 +76,69 @@ flowchart TD
     LocalServer --> Val
     VercelFunc --> Val
     Val --> Fetcher
+    Val --> Scraper
+    Fetcher --> CacheDisk
     Fetcher --> OpenMeteo
     Fetcher --> NOAA
-    Val --> Scraper
     Scraper --> MAGA
     Fetcher --> Soil
     Soil --> Streak
     Soil --> ML
     ML --> Econ
+    Scraper --> Econ
     Econ --> UI
     Econ --> PDF_W
+```
+
+### 2.2. Diagrama de Secuencia del Pipeline Analítico
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Productor as Productor / Técnico
+    participant UI as Frontend SPA (front/)
+    participant Server as Servidor / API REST
+    participant Validator as Input Validator
+    participant Fetcher as Data Fetcher & Cache
+    participant Ext as APIs Externas (ERA5/NOAA/MAGA)
+    participant Soil as Balance Hídrico (FAO-56)
+    participant ML as Ensamble ML (XGBoost)
+    participant Econ as Agronomía y Finanzas
+    participant PDF as Motor Dictamen PDF
+
+    Productor->>UI: Ingresa Fecha, Linderos de Terreno y Capital
+    UI->>Server: POST /api/analyze (JSON)
+    Server->>Validator: validate_and_sanitize(payload)
+    
+    alt Datos fuera de rango o coordenadas no permitidas
+        Validator-->>Server: ValidationError (HTTP 400)
+        Server-->>UI: Retorna mensaje de error descriptivo
+    else Validación exitosa (Calderas, Jutiapa)
+        Validator-->>Server: ValidatedInput
+        Server->>Fetcher: fetch_weather(lat, lon) & fetch_macro()
+        
+        alt Datos en caché local
+            Fetcher-->>Server: Retorna DataFrame desde .cache/
+        else Datos no existentes
+            Fetcher->>Ext: Consulta ERA5 Reanalysis & NOAA PSL
+            Ext-->>Fetcher: Series diarias continuas (1981-2026)
+            Fetcher-->>Server: DataFrame enriquecido
+        end
+
+        Server->>Soil: build_dataset() & simulate_window()
+        Soil-->>Server: Series hídricas (s/TAW, ETa/ETc, anegamiento)
+        
+        Server->>ML: train_calibrated_model() & predict_proba()
+        ML-->>Server: Probabilidad calibrada + Semáforo (Verde/Amarillo/Rojo)
+        
+        Server->>Econ: calculate_sowing_density() & calculate_financial_projection()
+        Econ-->>Server: Área (m2, mz), semillas, estado P&L, ROI y punto de equilibrio
+        
+        Server-->>UI: Payload completo de resultados (JSON)
+        UI->>UI: Renderiza Semáforo, Plano CAD, Balance Hídrico y Tabla P&L
+        UI->>PDF: Compila Dictamen Oficial en 3 páginas (html2pdf)
+        Productor->>UI: Inspecciona y Descarga Dictamen Técnico Oficial
+    end
 ```
 
 ---
@@ -84,54 +148,50 @@ flowchart TD
 ### 3.1. Validación y Blindaje contra Inyecciones (`core/input_validator.py`)
 Este módulo constituye la primera línea de defensa del sistema. Implementa tipado fuerte con dataclasses y sanitización estricta antes de invocar cualquier cálculo.
 
-#### Estructura de Datos de Entrada:
+#### Estructura de Datos de Entrada (`ValidatedInput`):
 ```python
 @dataclass
 class ValidatedInput:
-    sowing_date: str
-    lat: float
-    lon: float
-    shape_type: str
-    sides: List[float]
-    width: float
-    length: float
-    capital: float
-    corn_type: str
-    capital_warnings: List[str]
-    capital_per_manzana: float
+    sowing_date: str             # Fecha tentativa (AAAA-MM-DD)
+    lat: float                   # Latitud decimal dentro de Calderas
+    lon: float                   # Longitud decimal dentro de Calderas
+    shape_type: str              # "rectangulo", "cuadrilatero", "triangulo"
+    sides: List[float]           # Lista de longitudes en metros
+    width: float                 # Ancho promedio (m)
+    length: float                # Largo promedio (m)
+    capital: float               # Capital propio invertido (Q)
+    corn_type: str               # "blanco" (única variedad soportada)
+    capital_warnings: List[str]  # Advertencias diagnósticas no bloqueantes
+    capital_per_manzana: float   # Densidad de capital (Q/mz)
 ```
 
-#### Reglas de Validación y Hardening:
-1. **Límites Geográficos Exclusivos:**
-   Rechaza cualquier coordenada que se encuentre fuera de la caja envolvente de Calderas, San José Acatempa:
-   $$\text{Latitud} \in [14.240^\circ, 14.290^\circ], \quad \text{Longitud} \in [-90.160^\circ, -90.110^\circ]$$
-2. **Sanitización de Cadenas de Texto (`sanitize_string`):**
-   * Longitud máxima: 100 caracteres.
-   * Filtro anti-XSS: Remoción recursiva de patrones `<script.*?>.*?</script>` y tags HTML generales `<[^>]+>`.
-   * Filtro anti-SQLi: Supresión de palabras reservadas (`SELECT`, `DROP`, `INSERT`, `DELETE`, `UPDATE`, `UNION`), comentarios (`--`) y terminadores (`;`).
-   * Filtro anti-Path Traversal: Supresión de secuencias `../`, `..\\`, `/` y `\\`.
-3. **Consistencia Geométrica:**
-   * Lados individuales entre $1.0\text{ m}$ y $2,000.0\text{ m}$.
-   * Área total acotada a un máximo de $700,000.0\text{ m}^2$ ($100\text{ manzanas}$).
-   * Desigualdad triangular estricta para terrenos de 3 lados: $a + b > c$, $a + c > b$, $b + c > a$.
-4. **Validación Financiera de Capital:**
-   * Mínimo absoluto: $\text{Q } 500.00$ (inversión mínima requerida para semilla y laboreo en minifundio).
-   * Máximo admisible: $\text{Q } 150,000.00$.
-   * Corredor histórico de suficiencia: $\text{Q } 2,000.00/\text{mz}$ a $\text{Q } 25,000.00/\text{mz}$. Si el capital se ubica fuera de este rango, genera advertencias diagnósticas no bloqueantes.
+#### Reglas de Validación y Hardening de Seguridad:
+
+| Campo | Regla de Validación | Rango Permitido | Acción ante Incumplimiento |
+| :--- | :--- | :--- | :--- |
+| **Latitud (`lat`)** | Geo-fencing Calderas, Jutiapa | `[14.240, 14.290]` | Rechazo HTTP 400 (`ValidationError`) |
+| **Longitud (`lon`)** | Geo-fencing Calderas, Jutiapa | `[-90.160, -90.110]` | Rechazo HTTP 400 (`ValidationError`) |
+| **Fecha (`sowing_date`)** | Formato ISO 8601 | `1981-01-01` a `2030-12-31` | Rechazo HTTP 400 |
+| **Linderos (`sides`)** | Métrica física por lado | `1.0 m` a `2,000.0 m` | Rechazo HTTP 400 |
+| **Área Total** | Límite máximo de predio | Máximo `700,000.0 m²` (100 mz) | Rechazo HTTP 400 |
+| **Desigualdad Triangular** | Geometría euclidiana | $a+b > c, \quad a+c > b, \quad b+c > a$ | Rechazo HTTP 400 |
+| **Capital Total** | Inversión mínima y máxima | `Q 500.00` a `Q 150,000.00` | Rechazo HTTP 400 |
+| **Capital por Manzana** | Corredor histórico Jutiapa | `Q 2,000.00/mz` a `Q 25,000.00/mz` | Advertencia diagnóstica informativa |
+| **Sanitización de Texto** | Filtro anti-inyección | Máx. 100 caracteres por campo | Supresión de tags HTML, SQLi y Path Traversal |
 
 ---
 
 ### 3.2. Ingesta y Caché de Datos Agrometeorológicos (`core/data_fetcher.py`)
 Maneja la extracción y normalización de series climáticas satelitales y macroclimáticas.
 
-#### Variables Diarias ERA5 (Open-Meteo):
+#### Variables Diarias ERA5 (Open-Meteo Archive API):
 * `precipitation_sum`: Precipitación acumulada en 24 horas ($mm$).
-* `et0_fao_evapotranspiration`: Evapotranspiración de referencia calculada mediante la ecuación FAO-56 Penman-Monteith ($mm$).
+* `et0_fao_evapotranspiration`: Evapotranspiración de referencia Penman-Monteith ($mm$).
 * `temperature_2m_mean`: Temperatura promedio diaria a 2 metros sobre la superficie (°C).
 
 #### Índices Macroclimáticos (NOAA PSL):
-1. **Multivariate ENSO Index (MEI v2):** Refleja la interacción océano-atmósfera en el Pacífico tropical a partir de cinco variables (presión al nivel del mar, temperatura superficial del mar, componentes zonal y meridional del viento superficial, y radiación de onda larga emergente).
-2. **Niño 3.4 Anomalies:** Anomalías mensuales de temperatura superficial del mar en la región comprendida entre $5^\circ\text{N} - 5^\circ\text{S}$ y $170^\circ\text{W} - 120^\circ\text{W}$.
+1. **Multivariate ENSO Index (MEI v2):** Refleja la interacción océano-atmósfera en el Pacífico tropical a partir de cinco variables atmosféricas y oceánicas.
+2. **Niño 3.4 Anomalies:** Anomalías mensuales de temperatura superficial del mar en el Pacífico central ($5^\circ\text{N} - 5^\circ\text{S}$, $170^\circ\text{W} - 120^\circ\text{W}$).
 
 #### Estrategia de Resiliencia y Reducción de Latencia:
 * **Caché en Disco:** Almacena las series climáticas en `.cache/weather_{lat}_{lon}_{start_year}.csv`. Las ejecuciones recurrentes evitan llamadas de red.
@@ -143,152 +203,168 @@ Maneja la extracción y normalización de series climáticas satelitales y macro
 ### 3.3. Física de Suelos y Balance Hídrico Continuo (`core/soil_balance.py`)
 
 #### Pedotransferencia de Saxton & Rawls (2006):
-Calcula las propiedades hidráulicas del suelo a partir de su composición granulométrica. Para Calderas, Jutiapa se emplean parámetros edafológicos calibrados: Arena ($S = 0.52$), Arcilla ($C = 0.26$) y Materia Orgánica ($OM = 1.8\%$).
+Calcula las propiedades hidráulicas del suelo a partir de su composición textural. Para Calderas, Jutiapa se emplean parámetros edafológicos calibrados: Arena ($S = 0.52$), Arcilla ($C = 0.26$) y Materia Orgánica ($OM = 1.8\%$).
 
-1. **Contenido Volumétrico de Agua a Capacidad de Campo ($\theta_{FC}$):**
-   $$\theta_{FC,1} = -0.251 S + 0.195 C + 0.011 OM + 0.006 (S \times OM) - 0.027 (C \times OM) + 0.452 (S \times C) + 0.299$$
-   $$\theta_{FC} = \theta_{FC,1} + \left(1.283 \times \theta_{FC,1}^2 - 0.374 \times \theta_{FC,1} - 0.015\right)$$
+1. **Humedad Volumétrica a Capacidad de Campo ($\theta_{FC}$):**
+   $$\theta_{FC,1} = -0.251 S + 0.195 C + 0.011 OM + 0.006 (S \cdot OM) - 0.027 (C \cdot OM) + 0.452 (S \cdot C) + 0.299$$
+   $$\theta_{FC} = \theta_{FC,1} + \left(1.283 \cdot \theta_{FC,1}^2 - 0.374 \cdot \theta_{FC,1} - 0.015\right)$$
 
-2. **Contenido Volumétrico a Punto de Marchitez Permanente ($\theta_{WP}$):**
-   $$\theta_{WP,1} = -0.024 S + 0.487 C + 0.006 OM + 0.005 (S \times OM) - 0.013 (C \times OM) + 0.068 (S \times C) + 0.031$$
-   $$\theta_{WP} = \theta_{WP,1} + \left(0.14 \times \theta_{WP,1} - 0.02\right)$$
+2. **Humedad Volumétrica a Punto de Marchitez Permanente ($\theta_{WP}$):**
+   $$\theta_{WP,1} = -0.024 S + 0.487 C + 0.006 OM + 0.005 (S \cdot OM) - 0.013 (C \cdot OM) + 0.068 (S \cdot C) + 0.031$$
+   $$\theta_{WP} = \theta_{WP,1} + \left(0.14 \cdot \theta_{WP,1} - 0.02\right)$$
 
-3. **Agua Total Disponible ($TAW$) y Agua Fácilmente Aprovechable ($RAW$):**
-   $$TAW = (\theta_{FC} - \theta_{WP}) \times Z_r$$
-   $$RAW = p \times TAW$$
-   Donde $Z_r = 600\text{ mm}$ es la profundidad radicular efectiva del maíz y $p = 0.55$ es la fracción de agotamiento sin estrés según FAO-56.
+3. **Constantes Edafológicas Resultantes para Calderas, Jutiapa:**
+
+| Parámetro | Símbolo | Valor Calculado | Unidad | Significado Físico |
+| :--- | :--- | :--- | :--- | :--- |
+| **Capacidad de Campo** | $\theta_{FC}$ | $31.4\%$ | $m^3/m^3$ | Contenido de agua retenida contra la gravedad |
+| **Marchitez Permanente** | $\theta_{WP}$ | $18.8\%$ | $m^3/m^3$ | Límite donde la planta no puede extraer agua |
+| **Profundidad Radicular** | $Z_r$ | $600.0$ | $mm$ | Profundidad de raíces activas de maíz blanco |
+| **Agua Total Disponible** | $TAW$ | $75.3$ | $mm$ | $TAW = (\theta_{FC} - \theta_{WP}) \cdot Z_r$ |
+| **Fracción de Agotamiento** | $p$ | $0.55$ | Adimensional | Fracción FAO-56 sin estrés hídrico |
+| **Agua Fácilmente Aprovechable** | $RAW$ | $41.4$ | $mm$ | $RAW = p \cdot TAW$ |
 
 #### Simulación Hidrológica Continua tipo Cubo (*Bucket Model*):
 Para cada día $t$:
-1. Evapotranspiración del cultivo:
-   $$ET_c(t) = K_c(t) \times ET_0(t)$$
-   Con coeficientes de cultivo ajustados a la fenología del maíz blanco: $K_{c,\text{ini}} = 0.40$, $K_{c,\text{med}} = 1.20$, $K_{c,\text{fin}} = 0.60$.
-2. Factor de estrés hídrico ($K_s$):
-   $$K_s(t) = \begin{cases} 1.0 & \text{si } (TAW - s(t)) \le RAW \\ \max\left(0.0, \min\left(1.0, \frac{s(t)}{TAW - RAW}\right)\right) & \text{si } (TAW - s(t)) > RAW \end{cases}$$
-3. Evapotranspiración real:
-   $$ET_a(t) = K_s(t) \times ET_c(t)$$
-4. Actualización del almacenamiento de agua en el suelo ($s$):
+
+1. **Evapotranspiración del cultivo ($ET_c$):**
+   $$ET_c(t) = K_c(t) \cdot ET_0(t)$$
+   Donde $K_c$ sigue la curva fenológica del maíz blanco: $K_{c,\text{ini}} = 0.40$, $K_{c,\text{med}} = 1.20$, $K_{c,\text{fin}} = 0.60$.
+
+2. **Factor de estrés hídrico ($K_s$):**
+   $$K_s(t) = \begin{cases} 1.0 & \text{si } [TAW - s(t)] \le RAW \\ \max\left(0.0, \min\left(1.0, \frac{s(t)}{TAW - RAW}\right)\right) & \text{si } [TAW - s(t)] > RAW \end{cases}$$
+
+3. **Evapotranspiración real del cultivo ($ET_a$):**
+   $$ET_a(t) = K_s(t) \cdot ET_c(t)$$
+
+4. **Actualización de la lámina de agua almacenada en el suelo ($s$):**
    $$s(t+1) = \min\left(TAW, \max\left(0.0, s(t) + P(t) - ET_a(t)\right)\right)$$
-5. Detección de Anegamiento (*Waterlogging*):
-   $$\text{Anegamiento}(t) = 1 \quad \iff \quad [s(t) + P(t) - ET_a(t) - TAW] \ge 15.0\text{ mm/día}$$
+
+5. **Detección de Anegamiento (*Waterlogging*):**
+   $$\text{Anegamiento}(t) = 1 \iff [s(t) + P(t) - ET_a(t) - TAW] \ge 15.0\text{ mm/día}$$
 
 #### Criterio Estricto de Viabilidad Agronómica:
-Una ventana fenológica se califica como **VIABLE** ($y = 1$) si y sólo si satisface simultáneamente:
+Una ventana fenológica se califica formalmente como **VIABLE** ($y = 1$) si y sólo si:
 $$\frac{\sum_{t=1}^{60} ET_a(t)}{\sum_{t=1}^{60} ET_c(t)} \ge 0.90 \quad \land \quad \sum_{t=1}^{60} \text{Anegamiento}(t) \le 8\text{ días}$$
 
 ---
 
-### 3.4. Análisis de Rachas y Fenología del Maíz (`core/rain_streak_analyzer.py`)
+### 3.4. Análisis de Rachas Pluviométricas y Fenología (`core/rain_streak_analyzer.py`)
 Modela la distribución de precipitación en una serie continua de 120 días post-siembra, subdividida en cuatro etapas biológicas críticas:
 
-| Etapa Fenológica | Periodo | Demanda Hídrica | Umbral de Fallo por Sequía | Umbral de Fallo por Exceso |
+| Etapa Fenológica | Ventana Temporal | Demanda Hídrica | Umbral Crítico de Sequía | Umbral Crítico de Exceso |
 | :--- | :--- | :--- | :--- | :--- |
-| **1. Germinación y Emergencia** | Días 1 a 15 | 20–40 mm | $>7$ días con $<1.0\text{ mm/día}$ | $>5$ días con $>15.0\text{ mm/día}$ (pudrición de semilla) |
-| **2. Desarrollo Vegetativo** | Días 16 a 55 | 150–250 mm | $>10$ días con $<1.5\text{ mm/día}$ | $>8$ días con $>20.0\text{ mm/día}$ (asfixia radicular) |
-| **3. Floración y Polinización (Crítica)** | Días 56 a 75 | 80–120 mm | $>4$ días con $<2.0\text{ mm/día}$ (desecación de estigmas) | $>6$ días con $>25.0\text{ mm/día}$ (lavado de polen) |
-| **4. Llenado de Grano y Madurez** | Días 76 a 120 | 150–250 mm | $>6$ días con $<1.5\text{ mm/día}$ (aborto de granos) | $>10$ días con $>15.0\text{ mm/día}$ (pudrición de mazorca) |
+| **1. Germinación y Emergencia** | Días 1 a 15 | 20 a 40 mm | $>7$ días con $<1.0\text{ mm/día}$ | $>5$ días con $>15.0\text{ mm/día}$ (pudrición de semilla) |
+| **2. Desarrollo Vegetativo** | Días 16 a 55 | 150 a 250 mm | $>10$ días con $<1.5\text{ mm/día}$ | $>8$ días con $>20.0\text{ mm/día}$ (asfixia radicular) |
+| **3. Floración y Polinización** | Días 56 a 75 | 80 a 120 mm | $>4$ días con $<2.0\text{ mm/día}$ (desecación de estigmas) | $>6$ días con $>25.0\text{ mm/día}$ (lavado de polen) |
+| **4. Llenado de Grano y Madurez** | Días 76 a 120 | 150 a 250 mm | $>6$ días con $<1.5\text{ mm/día}$ (aborto de grano) | $>10$ días con $>15.0\text{ mm/día}$ (pudrición de mazorca) |
 
 #### Detección Algorítmica de la Canícula:
-Se identifica la canícula si durante los meses de julio o agosto ocurre una racha de sequía continuada:
-$$\text{Canícula Detectada} = \text{True} \quad \iff \quad \max(\text{Racha Seca en Etapas 2 y 3}) \ge 6\text{ días}$$
-* **Leve:** $6 - 9$ días secos continuos.
-* **Moderada:** $10 - 14$ días secos continuos.
-* **Severa:** $\ge 15$ días secos continuos (pérdidas irreversibles en secano).
+Se identifica la canícula si durante los meses de julio o agosto ocurre una racha de sequía continuada en las etapas 2 o 3:
+$$\text{Canícula Detectada} = \text{True} \iff \max(\text{Días Secos Consecutivos}) \ge 6\text{ días}$$
+* **Leve:** 6 a 9 días secos continuos.
+* **Moderada:** 10 a 14 días secos continuos.
+* **Severa:** $\ge 15$ días secos continuos (pérdidas agronómicas severas en secano).
 
 ---
 
 ### 3.5. Modelos de Machine Learning y Calibración (`core/models.py`)
 
-#### Pipeline de Entrenamiento e Inferencia:
-1. **Vector de Características ($X$):**
-   * Precipitaciones acumuladas por periodos: $P_{\text{ant\_30d}}$, $P_{\text{ant\_15d}}$, $P_{\text{ant\_7d}}$.
-   * Evapotranspiración y temperatura: $ET_{0,\text{ant\_30d}}$, $T_{\text{media\_30d}}$.
-   * Índices macroclimáticos oceánicos: MEI v2 y anomalías de Niño 3.4.
-   * Componentes armónicos del día del año (para capturar estacionalidad sin discontinuidad):
-     $$\text{doy}_{\sin} = \sin\left(\frac{2\pi \times \text{doy}}{365.25}\right), \quad \text{doy}_{\cos} = \cos\left(\frac{2\pi \times \text{doy}}{365.25}\right)$$
-   * Contenido hídrico inicial del suelo ($s_0 / TAW$).
+#### Vector de Características de Entrada ($X$):
 
-2. **Algoritmo de Gradient Boosting (XGBoost 3.4):**
-   * `tree_method="hist"`: Construcción de árboles basada en cuantiles para cómputo rápido y memoria reducida.
-   * `max_depth=2`, `learning_rate=0.05`, `n_estimators=150`.
-   * Regularización L1 (`reg_alpha=0.5`) y L2 (`reg_lambda=5.0`) para prevenir sobreajuste a micro-oscilaciones.
-   * `scale_pos_weight = \frac{N_{\text{neg}}}{N_{\text{pos}}}` para equilibrar años anómalos.
+| Variable | Símbolo / Notación | Descripción | Unidad |
+| :--- | :--- | :--- | :--- |
+| **Lluvia antecedente 30d** | `P_ant_30d` | Lluvia acumulada 30 días previos a la siembra | mm |
+| **Lluvia antecedente 15d** | `P_ant_15d` | Lluvia acumulada 15 días previos a la siembra | mm |
+| **Lluvia antecedente 7d** | `P_ant_7d` | Lluvia acumulada 7 días previos a la siembra | mm |
+| **Evapotranspiración 30d** | `ET0_ant_30d` | $ET_0$ acumulada en los 30 días previos | mm |
+| **Temperatura media 30d** | `T_media_30d` | Temperatura media a 2m en 30 días previos | °C |
+| **Índice MEI v2** | `MEI_v2` | Multivariate ENSO Index vigente de NOAA PSL | Adimensional |
+| **Anomalía Niño 3.4** | `Nino34_anom` | Anomalía térmica mensual de NOAA PSL | °C |
+| **Componente Seno DOY** | `doy_sin` | $\sin(2\pi \cdot \text{DOY} / 365.25)$ | Cíclico (-1 a 1) |
+| **Componente Coseno DOY**| `doy_cos` | $\cos(2\pi \cdot \text{DOY} / 365.25)$ | Cíclico (-1 a 1) |
+| **Humedad inicial del suelo**| `s0_frac` | Fracción inicial de llenado del suelo ($s / TAW$) | Fracción (0 a 1) |
 
-3. **Validación Temporal Cruzada (GroupKFold):**
-   Los pliegues de entrenamiento y prueba se separan estrictamente por **año calendario completo** ($k=5$). Esto garantiza que ninguna ventana temporal del mismo año se comparta entre entrenamiento y prueba, impidiendo la fuga de información temporal (*temporal leakage*).
+#### Hiperparámetros del Modelo XGBoost 3.4:
+* `tree_method="hist"`: Optimización continua basada en histogramas.
+* `n_estimators=150`, `max_depth=2`, `learning_rate=0.05`.
+* `subsample=0.8`, `colsample_bytree=0.8`, `min_child_weight=20`.
+* Regularización L1 (`reg_alpha=0.5`) y L2 (`reg_lambda=5.0`).
+* Ponderación de desbalance de clases:
+  $$\text{scale\_pos\_weight} = \frac{N_{\text{negativos}}}{N_{\text{positivos}}}$$
 
-4. **Calibración Sigmoidea (Platt Scaling):**
-   Las salidas de margen bruto de los árboles se transforman en probabilidades empíricas mediante `CalibratedClassifierCV(cv="prefit" | GroupKFold)`.
+#### Validación Temporal Cruzada y Métricas:
+* **División por Años Completos:** Validación con `GroupKFold(n_splits=5)` agrupada estrictamente por año agrícola para evitar filtración temporal (*zero temporal leakage*).
+* **Calibración Sigmoidea:** Calibración probabilística Platt Scaling mediante `CalibratedClassifierCV`.
+* **Brier Skill Score (BSS):**
+  $$BSS = 1 - \frac{\text{Brier Score}_{\text{modelo}}}{\text{Brier Score}_{\text{climatología}}}$$
 
-5. **Métricas de Rendimiento:**
-   * **Área Bajo la Curva ROC (ROC-AUC):** Mide la capacidad de discriminación.
-   * **Brier Skill Score (BSS):**
-     $$BSS = 1 - \frac{\text{BS}_{\text{modelo}}}{\text{BS}_{\text{climatología}}}$$
-     Donde $\text{BS} = \frac{1}{N} \sum_{i=1}^N (p_i - y_i)^2$. Un $BSS > 0$ certifica que el modelo supera formalmente a la probabilidad histórica climatológica local.
+#### Criterio del Semáforo Agronómico Tri-Color:
 
-6. **Semáforo Agronómico:**
-   $$S = \begin{cases} \text{Verde (Óptimo / Recomendado)} & \text{si } P_{\text{cal}} \ge 0.60 \\ \text{Amarillo (Alerta / Condicionado)} & \text{si } 0.35 \le P_{\text{cal}} < 0.60 \\ \text{Rojo (No Sembrar / Alto Riesgo)} & \text{si } P_{\text{cal}} < 0.35 \end{cases}$$
+| Color | Rango de Probabilidad | Estado Oficial | Acción Agronómica Dictaminada |
+| :--- | :--- | :--- | :--- |
+| 🟢 **Verde** | $P_{\text{cal}} \ge 0.60$ | **Óptimo / Recomendado** | Proceder con siembra estándar; densidad normal a alta (5.8 pl/m²). |
+| 🟡 **Amarillo**| $0.35 \le P_{\text{cal}} < 0.60$ | **Alerta / Condicionado** | Siembra con precauciones; variedades precoces, labranza de conservación y densidad moderada (4.4 pl/m²). |
+| 🔴 **Rojo** | $P_{\text{cal}} < 0.35$ | **No Recomendado / Alto Riesgo** | Alto riesgo de estrés hídrico; postergar siembra o preparar medidas de contingencia (3.6 pl/m²). |
 
 ---
 
 ### 3.6. Geometría, Densidad y Proyección Financiera (`core/agronomy_economics.py`)
 
-#### 1. Geometría de Parcelas:
-* **Rectángulo:** $A = w \times l$, $\quad P = 2(w + l)$.
-* **Triángulo (Herón):**
-  $$s = \frac{a + b + c}{2}, \quad A = \sqrt{s(s - a)(s - b)(s - c)}$$
-* **Cuadrilátero Irregular (Agrimensura Tradicional Guatemalteca):**
-  $$A = \left(\frac{a + c}{2}\right) \times \left(\frac{b + d}{2}\right)$$
+#### 1. Geometría y Agrimensura Rural:
+* **Rectángulo:**
+  $$\text{Área } (m^2) = \text{Ancho} \cdot \text{Largo}, \quad \text{Perímetro } (m) = 2 \cdot (\text{Ancho} + \text{Largo})$$
+* **Triángulo (Fórmula de Herón con semiperímetro $s$):**
+  $$s = \frac{a + b + c}{2}, \quad \text{Área } (m^2) = \sqrt{s(s - a)(s - b)(s - c)}$$
+* **Cuadrilátero Irregular (Técnica Agrimensura Tradicional MAGA):**
+  $$\text{Área } (m^2) = \left(\frac{a + c}{2}\right) \cdot \left(\frac{b + d}{2}\right)$$
   Donde $a$ (sur), $b$ (este), $c$ (norte) y $d$ (oeste) son los cuatro linderos perimetrales.
 * **Conversión Oficial Agraria de Guatemala:**
-  $$\text{Superficie en Manzanas (mz)} = \frac{\text{Área en } m^2}{7,000.0}$$
-  $$\text{Superficie en Hectáreas (ha)} = \frac{\text{Área en } m^2}{10,000.0}$$
+  $$\text{Superficie en Manzanas (mz)} = \frac{\text{Área } (m^2)}{7,000.0}$$
+  $$\text{Superficie en Hectáreas (ha)} = \frac{\text{Área } (m^2)}{10,000.0}$$
 
-#### 2. Densidad Agronómica y Semilla:
-La densidad poblacional vegetal se adapta al semáforo climático para equilibrar la masa foliar con la transpiración soportable por el suelo:
-* Verde: $5.8\text{ plantas}/m^2$ ($40,600\text{ plantas}/mz$). Surcos a $80\text{ cm}$, posturas a $22\text{ cm}$.
-* Amarillo: $4.4\text{ plantas}/m^2$ ($30,800\text{ plantas}/mz$). Surcos a $85\text{ cm}$, posturas a $27\text{ cm}$.
-* Rojo: $3.6\text{ plantas}/m^2$ ($25,200\text{ plantas}/mz$). Surcos a $90\text{ cm}$, posturas a $31\text{ cm}$.
-
-Cálculo de semilla requerida (germinación $88\%$, supervivencia $92\%$):
-$$\text{Semillas Totales} = \frac{\text{Plantas Totales}}{0.88 \times 0.92} \approx \text{Plantas Totales} \times 1.235$$
-$$\text{Bolsas Comerciales} = \frac{\text{Semillas Totales}}{60,000}, \quad \text{Libras} = \frac{\text{Semillas Totales}}{1,400}$$
+#### 2. Densidad Agronómica y Semilla Requerida:
+* **Densidad según Semáforo:**
+  * Semáforo Verde: $5.8\text{ plantas}/m^2$ ($40,600\text{ plantas}/mz$). Distanciamiento: $80\text{ cm} \times 22\text{ cm}$.
+  * Semáforo Amarillo: $4.4\text{ plantas}/m^2$ ($30,800\text{ plantas}/mz$). Distanciamiento: $85\text{ cm} \times 27\text{ cm}$.
+  * Semáforo Rojo: $3.6\text{ plantas}/m^2$ ($25,200\text{ plantas}/mz$). Distanciamiento: $90\text{ cm} \times 31\text{ cm}$.
+* **Factor de Seguridad de Siembra:**
+  Toma en cuenta un poder germinativo comercial del $88\%$ y una supervivencia de emergencia en campo del $92\%$:
+  $$\text{Semillas Totales} = \frac{\text{Plantas Totales}}{0.88 \cdot 0.92} \approx \text{Plantas Totales} \cdot 1.235$$
+  $$\text{Bolsas Comerciales} = \frac{\text{Semillas Totales}}{60,000}, \quad \text{Libras} = \frac{\text{Semillas Totales}}{1,400}$$
 
 #### 3. Proyección Financiera (P&L):
-* **Rendimiento Esperado en Quintales:**
-  $$\text{Rendimiento (qq/mz)} = 65.0 \times \left(0.40 + 0.60 \times P_{\text{cal}}\right)$$
-  $$\text{Producción Total (qq)} = \text{Rendimiento (qq/mz)} \times \text{Manzanas}$$
+* **Rendimiento Esperado:**
+  $$\text{Rendimiento (qq/mz)} = 65.0 \cdot \left(0.40 + 0.60 \cdot P_{\text{cal}}\right)$$
+  $$\text{Producción Total (qq)} = \text{Rendimiento (qq/mz)} \cdot \text{Manzanas}$$
 * **Estado Financiero:**
-  $$\text{Ingreso Bruto (Q)} = \text{Producción Total (qq)} \times \text{Precio MAGA (Q/qq)}$$
+  $$\text{Ingreso Bruto (Q)} = \text{Producción Total (qq)} \cdot \text{Precio MAGA (Q/qq)}$$
   $$\text{Utilidad Neta (Q)} = \text{Ingreso Bruto (Q)} - \text{Capital Invertido (Q)}$$
-  $$\text{ROI (\%)} = \left(\frac{\text{Utilidad Neta}}{\text{Capital Invertido}}\right) \times 100$$
+  $$\text{ROI (\%)} = \left(\frac{\text{Utilidad Neta}}{\text{Capital Invertido}}\right) \cdot 100$$
   $$\text{Punto de Equilibrio (qq)} = \frac{\text{Capital Invertido (Q)}}{\text{Precio MAGA (Q/qq)}}$$
   $$\text{Inversión por Quintal (Q/qq)} = \frac{\text{Capital Invertido (Q)}}{\text{Producción Total (qq)}}$$
 
 ---
 
-### 3.7. Extracción de Precios Oficiales del MAGA (`core/maga_scraper.py` y `api/maga-price.js`)
-Realiza la extracción automatizada del precio del quintal de Maíz Blanco de primera en el Mercado Mayorista La Terminal a partir del portal oficial de DIPLAN:
-* URL: `https://precios.maga.gob.gt/diarios/diarios.html`
-* Expresión regular de captura:
-  ```regex
-  <td>\s*Maíz blanco, de primera\s*</td>\s*<td>\s*La Terminal\s*</td>\s*<td[^>]*>\s*Quintal\s*</td>\s*<td[^>]*class=['"]precios['"][^>]*>\s*([\d\.]+)
-  ```
-* Memoria caché con TTL de 10 minutos (600 s) y estructura de contingencia (*fallback*) con precio base verificado de Q 235.00/qq en caso de indisponibilidad temporal del servidor estatal.
+### 3.7. Extracción de Precios Oficiales del MAGA (`core/maga_scraper.py`)
+* **Fuente:** Sistema de Precios Diarios de Mercados Mayoristas del MAGA (`https://precios.maga.gob.gt/diarios/diarios.html`).
+* **Producto Rastreado:** Maíz blanco, de primera (Mercado La Terminal, Ciudad de Guatemala).
+* **Caché en Memoria:** TTL de 10 minutos (600 segundos) para no saturar los servidores gubernamentales.
+* **Precio Base Verificado (Fallback):** Q 235.00 por quintal al 09/10/2026 en caso de indisponibilidad del servicio de red.
 
 ---
 
 ## 4. Capa de Servicios Web y Servidor Multihilo (`server.py`)
 
-El archivo `server.py` implementa un servidor HTTP multihilo de alto rendimiento para entornos de producción local o despliegues dedicados:
+El archivo `server.py` implementa un servidor HTTP multihilo para entornos locales y servidores dedicados:
 
 ```python
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     daemon_threads = True
 ```
 
-### Funciones Principales de `server.py`:
-1. **Servicio Estático Inteligente:** Mapea solicitudes hacia la carpeta `front/` sirviendo `index.html`, hojas de estilo CSS, scripts JS, tipografías vectoriales e imágenes con tipos MIME estrictos.
+### Funciones Principales:
+1. **Servidor de Archivos Estáticos:** Mapea solicitudes hacia la carpeta `front/` sirviendo `index.html`, hojas de estilo CSS, scripts JS, tipografías vectoriales e imágenes con tipos MIME estrictos.
 2. **Endpoint `/api/maga-price` (GET):** Retorna el JSON con la cotización en línea del maíz blanco y su fecha oficial de actualización.
 3. **Endpoint `/api/analyze` (POST):**
    * Inspección de tamaño de carga útil ($< 10\text{ KB}$) para protección contra sobrecarga de memoria y DoS.
@@ -333,7 +409,7 @@ La interfaz de usuario está construida como una Single Page Application (SPA) c
 El sistema implementa dos motores de generación de informes técnicos en formato Carta (Letter):
 
 ### 6.1. Motor en Cliente (`front/js/vendor/html2pdf.bundle.min.js`)
-Permite al usuario visualizar el dictamen directamente en la página web antes de guardarlo.
+Permite al usuario visualizar el dictamen directamente en la página web antes de guardarlo:
 * Ancho de renderizado estandarizado a $800\text{ px}$.
 * Márgenes limpios de $10\text{ mm}$ en los cuatro costados.
 * Paginación forzada en tres hojas estructuradas (`page-break-before: always`).

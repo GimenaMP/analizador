@@ -1,0 +1,32 @@
+{
+  "title": "Flujo de Balance Hídrico Continuo FAO-56 y Física de Suelos Saxton-Rawls",
+  "type": "flowchart",
+  "theme": "default",
+  "nodes": [
+    { "id": "soil_input", "label": "Textura del Suelo\n(52% Arena, 26% Arcilla, 1.8% MO)", "type": "rectangle" },
+    { "id": "saxton_model", "label": "Ecuaciones Saxton & Rawls (2006)\nθFC (Capacidad Campo) & θWP (Marchitez)", "type": "rectangle" },
+    { "id": "taw_raw", "label": "Capacidades de Almacenamiento\nTAW = 75.3 mm | RAW = 41.4 mm (p=0.55)", "type": "rectangle" },
+    { "id": "weather_in", "label": "Reanálisis ERA5 Diario\nPrecipitación (P) y ET0 (Penman-Monteith)", "type": "rectangle" },
+    { "id": "crop_curve", "label": "Curva Fenológica Maíz Blanco\nKc = [0.40 -> 1.20 -> 0.60] (120 días)", "type": "rectangle" },
+    { "id": "etc_calc", "label": "Demanda Hídrica Teórica\nETc(t) = Kc(t) * ET0(t)", "type": "rectangle" },
+    { "id": "stress_ks", "label": "Factor de Estrés Hídrico Ks(t)\nSi (TAW - s) <= RAW: Ks = 1.0\nSi (TAW - s) > RAW: Ks = s / (TAW - RAW)", "type": "diamond" },
+    { "id": "eta_calc", "label": "Evapotranspiración Real\nETa(t) = Ks(t) * ETc(t)", "type": "rectangle" },
+    { "id": "bucket_update", "label": "Actualización Cubo Edáfico\ns(t+1) = min(TAW, max(0, s(t) + P(t) - ETa(t)))", "type": "rectangle" },
+    { "id": "waterlog_check", "label": "¿Anegamiento?\n[s + P - ETa - TAW] >= 15 mm/día", "type": "diamond" },
+    { "id": "viability_metric", "label": "Criterio de Viabilidad Fenológica\nRatio (Sum ETa / Sum ETc) >= 0.90\ny Días de Anegamiento <= 8 días", "type": "rectangle" }
+  ],
+  "edges": [
+    { "sourceId": "soil_input", "targetId": "saxton_model" },
+    { "sourceId": "saxton_model", "targetId": "taw_raw" },
+    { "sourceId": "weather_in", "targetId": "etc_calc", "label": "ET0 diario" },
+    { "sourceId": "crop_curve", "targetId": "etc_calc", "label": "Kc fenológico" },
+    { "sourceId": "etc_calc", "targetId": "stress_ks", "label": "ETc(t)" },
+    { "sourceId": "taw_raw", "targetId": "stress_ks", "label": "TAW & RAW" },
+    { "sourceId": "stress_ks", "targetId": "eta_calc", "label": "Coeficiente Ks" },
+    { "sourceId": "eta_calc", "targetId": "bucket_update", "label": "Extracción ETa" },
+    { "sourceId": "weather_in", "targetId": "bucket_update", "label": "Entrada P(t)" },
+    { "sourceId": "bucket_update", "targetId": "waterlog_check" },
+    { "sourceId": "waterlog_check", "targetId": "viability_metric", "label": "Registro diario" },
+    { "sourceId": "eta_calc", "targetId": "viability_metric", "label": "Suma acumulada" }
+  ]
+}

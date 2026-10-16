@@ -1,0 +1,48 @@
+{
+  "title": "Arquitectura Integral del Sistema AGRO-JUTIAPA",
+  "type": "flowchart",
+  "theme": "default",
+  "nodes": [
+    { "id": "client_ui", "label": "Frontend SPA\n(HTML5 / CSS / Vanilla JS)", "type": "rectangle" },
+    { "id": "client_cad", "label": "Motor CAD Terreno\n(terrain.js / Canvas)", "type": "rectangle" },
+    { "id": "client_chart", "label": "Gráfica Hídrica\n(charts.js / Chart.js)", "type": "rectangle" },
+    { "id": "client_pdf", "label": "Visor y Exportador PDF\n(html2pdf.bundle.min.js)", "type": "rectangle" },
+
+    { "id": "gw_local", "label": "Servidor Multihilo\n(server.py :8000)", "type": "rectangle" },
+    { "id": "gw_vercel", "label": "Serverless Functions\n(api/analyze.js)", "type": "rectangle" },
+
+    { "id": "core_validator", "label": "Validador y Sanitizador\n(input_validator.py)", "type": "diamond" },
+    { "id": "core_fetcher", "label": "Ingesta Meteorológica\n(data_fetcher.py)", "type": "rectangle" },
+    { "id": "core_soil", "label": "Física Saxton-Rawls & FAO-56\n(soil_balance.py)", "type": "rectangle" },
+    { "id": "core_streaks", "label": "Analizador de Rachas 120d\n(rain_streak_analyzer.py)", "type": "rectangle" },
+    { "id": "core_ml", "label": "XGBoost 3.4 Calibrado\n(models.py)", "type": "rectangle" },
+    { "id": "core_econ", "label": "Geometría, Densidad & P&L\n(agronomy_economics.py)", "type": "rectangle" },
+    { "id": "core_maga", "label": "Scraper Precios MAGA\n(maga_scraper.py)", "type": "rectangle" },
+
+    { "id": "ext_era5", "label": "ERA5 Reanalysis\n(Open-Meteo API)", "type": "cylinder" },
+    { "id": "ext_noaa", "label": "MEI v2 / Niño 3.4\n(NOAA PSL)", "type": "cylinder" },
+    { "id": "ext_maga", "label": "Mercados Mayoristas\n(MAGA DIPLAN)", "type": "cylinder" },
+    { "id": "cache_disk", "label": "Caché Local (.cache/)\nSeries Históricas CSV", "type": "cylinder" }
+  ],
+  "edges": [
+    { "sourceId": "client_ui", "targetId": "client_cad", "label": "Lados/Coords" },
+    { "sourceId": "client_ui", "targetId": "client_chart", "label": "Timeline" },
+    { "sourceId": "client_ui", "targetId": "client_pdf", "label": "Generar Dictamen" },
+    { "sourceId": "client_ui", "targetId": "gw_local", "label": "POST /api/analyze" },
+    { "sourceId": "client_ui", "targetId": "gw_vercel", "label": "POST /api/analyze" },
+    { "sourceId": "gw_local", "targetId": "core_validator", "label": "Payload JSON" },
+    { "sourceId": "gw_vercel", "targetId": "core_validator", "label": "Payload JSON" },
+    { "sourceId": "core_validator", "targetId": "core_fetcher", "label": "Coords Válidas" },
+    { "sourceId": "core_validator", "targetId": "core_maga", "label": "Precio Válido" },
+    { "sourceId": "core_fetcher", "targetId": "cache_disk", "label": "Lectura/Escritura" },
+    { "sourceId": "core_fetcher", "targetId": "ext_era5", "label": "P, ET0, Tmedia" },
+    { "sourceId": "core_fetcher", "targetId": "ext_noaa", "label": "ENSO Indices" },
+    { "sourceId": "core_maga", "targetId": "ext_maga", "label": "Scraping La Terminal" },
+    { "sourceId": "core_fetcher", "targetId": "core_soil", "label": "Series Diarias" },
+    { "sourceId": "core_soil", "targetId": "core_streaks", "label": "Series Balance" },
+    { "sourceId": "core_soil", "targetId": "core_ml", "label": "ETa / ETc & Anegamiento" },
+    { "sourceId": "core_ml", "targetId": "core_econ", "label": "Probabilidad Calibrada" },
+    { "sourceId": "core_maga", "targetId": "core_econ", "label": "Precio Q 235/qq" },
+    { "sourceId": "core_econ", "targetId": "client_ui", "label": "Resultados P&L + Semáforo" }
+  ]
+}

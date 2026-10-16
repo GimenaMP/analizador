@@ -786,3 +786,16 @@ flowchart TD
 | **`413 Payload Too Large`**| Cuerpo de petición excede los 10 KB. | JSON de protección DoS. | Notifica bloqueo de carga útil. |
 | **`405 Method Not Allowed`**| Petición vía GET o PUT en endpoint POST. | JSON de método no admitido. | Exige uso de método POST. |
 | **`500 Internal Error`**| Excepción imprevista no capturada. | JSON con mensaje genérico. | Registra traza y sugiere reintentar. |
+
+### Anexo C: Matriz de Control Documental de Proyectos de Ciencia de Datos (CRISP-DM / MLOps)
+
+Para la gobernanza del ciclo de vida analítico, trazabilidad y control de calidad bajo estándares ISO/IEC 25010 y MLOps, el proyecto dispone de la matriz integral de control documental en [`DOCUMENTACION_TECNICA.md`](file:///c:/Users/gimen/Downloads/analizador/DOCUMENTACION_TECNICA.md#11-matriz-de-control-y-documentos-de-proyectos-de-ciencia-de-datos-crisp-dm--mlops):
+
+* **Entendimiento del Negocio:** Objetivos, categorización semafórica, requisitos de modelo y dictamen agronómico.
+* **Minería e Ingesta de Datos:** Ingesta de ERA5 (1981-2026), índices NOAA PSL (MEI v2, Niño 3.4) y cotizaciones MAGA.
+* **Limpieza y Sanitización:** Validación estricta anti-inyección, geo-fencing de Calderas e imputación temporal continua.
+* **Exploración de Datos:** Análisis climatológico de 45 años, distribución bimodal de lluvia y severidad de canícula.
+* **Ingeniería de Características:** 10 predictores agroclimáticos con correlación de Spearman y *gain* en XGBoost.
+* **Modelado Predictivo y Calibración:** XGBoost `hist` y Platt Scaling con validación `GroupKFold` (cero fuga temporal).
+* **Visualización y Reportes:** Dashboard SPA reactivo, motor CAD Canvas, curvas de balance hídrico y Dictamen Oficial en PDF.
+* **Planes y Gobernanza:** Plan de entrega, despliegue dual, especificación de API REST y Manual de Usuario según estándar TechSmith.

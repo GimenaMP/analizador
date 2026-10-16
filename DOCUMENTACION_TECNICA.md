@@ -25,6 +25,50 @@ A diferencia de las herramientas convencionales basadas en valores estáticos o 
 6. Proyecta el Estado de Pérdidas y Ganancias (P&L) en función del capital propio del productor y precios oficiales mayoristas del Ministerio de Agricultura, Ganadería y Alimentación (MAGA) obtenidos mediante scraping automatizado.
 7. Emite un Dictamen Técnico Oficial maquetado en PDF de 3 páginas con visor de previsualización interactivo.
 
+### 1.1. Matriz de Control y Documentos de Proyectos de Ciencia de Datos (CRISP-DM / MLOps)
+
+La siguiente matriz estandarizada formaliza la gobernanza, trazabilidad y control de artefactos del proyecto conforme al ciclo de vida CRISP-DM (*Cross-Industry Standard Process for Data Mining*) y las directrices de aseguramiento MLOps:
+
+**Nombre del Proyecto:** Sistema Abierto de Viabilidad Agrícola y Proyección Agrometeorológica (AGRO-JUTIAPA)  
+**Administrador del Proyecto:** Ing. Fátima Gimena Medrano Pineda (Arquitectura de Software y Modelado Agroclimático)  
+**Ámbito Territorial:** Calderas, San José Acatempa, Jutiapa, Guatemala
+
+| DOCUMENTACIÓN REQUERIDA | SOLICITADO POR | FECHA DE SOLICITUD | FECHA EN QUE SE NECESITA | ASIGNADO A | FECHA DE RECEPCIÓN | UBICACIÓN |
+| :--- | :--- | :---: | :---: | :--- | :---: | :--- |
+| **ENTENDIMIENTO DEL NEGOCIO** | | | | | | |
+| Definición de los objetivos | Comité de Tesis UMG / Productores Calderas | 15/01/2026 | 15/02/2026 | F. Medrano (Arq. Software) | 10/02/2026 | [`DOCUMENTACION_TECNICA.md#1`](file:///c:/Users/gimen/Downloads/analizador/DOCUMENTACION_TECNICA.md#1-visión-general-del-sistema-y-contexto-de-ingeniería) |
+| Clasificación de categorías | Agrónomos Asesores / MAGA Jutiapa | 15/01/2026 | 20/02/2026 | F. Medrano (Data Scientist) | 18/02/2026 | [`core/models.py`](file:///c:/Users/gimen/Downloads/analizador/core/models.py) (Semáforo Verde/Amarillo/Rojo) |
+| Requisitos del modelo | Dirección de Postgrados UMG | 01/02/2026 | 28/02/2026 | F. Medrano (Lead Dev) | 25/02/2026 | [`ARQUITECTURA_Y_DISENO_SISTEMA.md#15`](file:///c:/Users/gimen/Downloads/analizador/ARQUITECTURA_Y_DISENO_SISTEMA.md#15-características) |
+| Informe de viabilidad | Cooperativa Agrícola San José Acatempa | 10/02/2026 | 15/03/2026 | F. Medrano (Investigador) | 12/03/2026 | [`core/soil_balance.py`](file:///c:/Users/gimen/Downloads/analizador/core/soil_balance.py) ($ET_a/ET_c \ge 0.90$) |
+| Recomendaciones | Asesores Técnicos de Campo | 15/02/2026 | 30/03/2026 | F. Medrano (Especialista) | 28/03/2026 | [`core/agronomy_economics.py`](file:///c:/Users/gimen/Downloads/analizador/core/agronomy_economics.py) & Dictamen PDF |
+| **MINERÍA DE DATOS** | | | | | | |
+| Fuentes de datos | Cátedra de Ciencia de Datos | 01/03/2026 | 15/03/2026 | F. Medrano (Data Engineer) | 14/03/2026 | Open-Meteo (ERA5 1981-2026), NOAA PSL (ENSO), MAGA |
+| Captura de datos | Equipo de Desarrollo Backend | 05/03/2026 | 25/03/2026 | F. Medrano (Backend Dev) | 22/03/2026 | [`core/data_fetcher.py`](file:///c:/Users/gimen/Downloads/analizador/core/data_fetcher.py) & [`core/maga_scraper.py`](file:///c:/Users/gimen/Downloads/analizador/core/maga_scraper.py) |
+| Almacenamiento de datos | Auditoría de Arquitectura de Datos | 10/03/2026 | 30/03/2026 | F. Medrano (Data Architect) | 28/03/2026 | Persistencia en `.cache/weather_*.csv` y memoria RAM |
+| **LIMPIEZA DE DATOS** | | | | | | |
+| Informes de inconsistencia | Equipo de Aseguramiento de Calidad (QA) | 15/03/2026 | 10/04/2026 | F. Medrano (QA Engineer) | 08/04/2026 | [`core/input_validator.py`](file:///c:/Users/gimen/Downloads/analizador/core/input_validator.py) (Geofencing & Anti-inyección) |
+| Seguimiento de los datos faltantes | Auditoría Estadística | 20/03/2026 | 15/04/2026 | F. Medrano (Data Scientist) | 12/04/2026 | Imputación temporal e interpolación en `data_fetcher.py` |
+| **EXPLORACIÓN DE DATOS** | | | | | | |
+| Análisis de datos | Dirección de Investigación | 01/04/2026 | 30/04/2026 | F. Medrano (Data Analyst) | 26/04/2026 | Análisis bimodal 45 años ERA5 y correlación ENSO |
+| Hipótesis de datos | Asesor Científico de Tesis | 05/04/2026 | 05/05/2026 | F. Medrano (Investigador) | 02/05/2026 | Modulación ENSO en canícula de Calderas, Jutiapa |
+| **INGENIERÍA DE FUNCIONES** | | | | | | |
+| Método de selección de funciones | Revisión de Modelado Predictivo | 15/04/2026 | 15/05/2026 | F. Medrano (ML Engineer) | 12/05/2026 | Matriz de correlación Spearman y gain en XGBoost |
+| Método de desarrollo de funciones | Arquitectura de Pipeline | 20/04/2026 | 20/05/2026 | F. Medrano (ML Engineer) | 18/05/2026 | 10 features agroclimáticas (`core/soil_balance.py`) |
+| **MODELADO PREDICTIVO** | | | | | | |
+| Métodos estadísticos | Tribunal Evaluador de Tesis | 01/05/2026 | 30/05/2026 | F. Medrano (ML Engineer) | 28/05/2026 | XGBoost v2.0+ (`hist`), Platt Scaling Calibrator |
+| Requisitos del modelo | Estándar ISO/IEC 25010 | 05/05/2026 | 05/06/2026 | F. Medrano (Lead Architect) | 01/06/2026 | `GroupKFold` 5 splits temporales (zero leakage) |
+| Evaluación del desempeño | Auditoría de Modelos | 15/05/2026 | 15/06/2026 | F. Medrano (Data Scientist) | 10/06/2026 | ROC-AUC (0.78), BSS (>0), Brier Score (0.16) |
+| Valor | Comunidad Agraria / Extensionistas | 20/05/2026 | 20/06/2026 | F. Medrano (Economista/Dev) | 18/06/2026 | Optimización ROI (28%-68%), prevención pérdidas Q |
+| **VISUALIZACIÓN DE DATOS** | | | | | | |
+| Plan de comunicación de las partes interesadas | Mesa Técnica Agroclimática (MTA) | 01/06/2026 | 30/06/2026 | F. Medrano (UX/UI & Front) | 25/06/2026 | Dashboard SPA, Canvas CAD, Chart.js, PDF Oficial |
+| **OTROS INFORMES** | | | | | | |
+| Plan de entrega | Gerencia de Proyecto | 10/06/2026 | 15/07/2026 | F. Medrano (Release Manager) | 12/07/2026 | Despliegue dual (On-Premise `server.py` + Vercel) |
+| Plan de capacitación y seguimiento | Extensionismo Rural Jutiapa | 15/06/2026 | 25/07/2026 | F. Medrano (Instructora) | 20/07/2026 | [`MANUAL_DE_USUARIO.md`](file:///c:/Users/gimen/Downloads/analizador/MANUAL_DE_USUARIO.md) (Guía TechSmith) |
+| Informe ad hoc | Comité de Emergencia Agrícola | 20/06/2026 | 30/07/2026 | F. Medrano (Analista) | 28/07/2026 | [`core/rain_streak_analyzer.py`](file:///c:/Users/gimen/Downloads/analizador/core/rain_streak_analyzer.py) (Monitoreo Canícula) |
+| Informe de cronograma | Dirección Académica UMG | 01/07/2026 | 15/08/2026 | F. Medrano (Planificadora) | 10/08/2026 | Ciclo fenológico 120d (Germ., Veg., Flor., Llenado) |
+| Informe de la API | Integración de Servicios | 10/07/2026 | 25/08/2026 | F. Medrano (API Architect) | 22/08/2026 | Endpoints `/api/analyze` y `/api/maga-price` JSON |
+| Documento de pruebas | Aseguramiento de Calidad (QA) | 15/07/2026 | 10/09/2026 | F. Medrano (Test Engineer) | 05/09/2026 | Pruebas de sanitización, física de suelos y estrés |
+
 ---
 
 ## 2. Arquitectura Global del Sistema
@@ -196,7 +240,8 @@ Maneja la extracción y normalización de series climáticas satelitales y macro
 #### Estrategia de Resiliencia y Reducción de Latencia:
 * **Caché en Disco:** Almacena las series climáticas en `.cache/weather_{lat}_{lon}_{start_year}.csv`. Las ejecuciones recurrentes evitan llamadas de red.
 * **Exponential Backoff:** Ante respuestas HTTP 429 (Rate Limit Exceeded), implementa reintentos con retraso geométrico:
-  $$t_{\text{espera}} = t_{\text{base}} \times \text{intento}$$
+
+  $$t_{\mathrm{espera}} = t_{\mathrm{base}} \times \mathrm{intento}$$
 
 ---
 
@@ -206,11 +251,15 @@ Maneja la extracción y normalización de series climáticas satelitales y macro
 Calcula las propiedades hidráulicas del suelo a partir de su composición textural. Para Calderas, Jutiapa se emplean parámetros edafológicos calibrados: Arena ($S = 0.52$), Arcilla ($C = 0.26$) y Materia Orgánica ($OM = 1.8\%$).
 
 1. **Humedad Volumétrica a Capacidad de Campo ($\theta_{FC}$):**
+
    $$\theta_{FC,1} = -0.251 S + 0.195 C + 0.011 OM + 0.006 (S \cdot OM) - 0.027 (C \cdot OM) + 0.452 (S \cdot C) + 0.299$$
+
    $$\theta_{FC} = \theta_{FC,1} + \left(1.283 \cdot \theta_{FC,1}^2 - 0.374 \cdot \theta_{FC,1} - 0.015\right)$$
 
 2. **Humedad Volumétrica a Punto de Marchitez Permanente ($\theta_{WP}$):**
+
    $$\theta_{WP,1} = -0.024 S + 0.487 C + 0.006 OM + 0.005 (S \cdot OM) - 0.013 (C \cdot OM) + 0.068 (S \cdot C) + 0.031$$
+
    $$\theta_{WP} = \theta_{WP,1} + \left(0.14 \cdot \theta_{WP,1} - 0.02\right)$$
 
 3. **Constantes Edafológicas Resultantes para Calderas, Jutiapa:**
@@ -228,24 +277,31 @@ Calcula las propiedades hidráulicas del suelo a partir de su composición textu
 Para cada día $t$:
 
 1. **Evapotranspiración del cultivo ($ET_c$):**
+
    $$ET_c(t) = K_c(t) \cdot ET_0(t)$$
-   Donde $K_c$ sigue la curva fenológica del maíz blanco: $K_{c,\text{ini}} = 0.40$, $K_{c,\text{med}} = 1.20$, $K_{c,\text{fin}} = 0.60$.
+
+   Donde $K_c$ sigue la curva fenológica del maíz blanco: $K_{c,\mathrm{ini}} = 0.40$, $K_{c,\mathrm{med}} = 1.20$, $K_{c,\mathrm{fin}} = 0.60$.
 
 2. **Factor de estrés hídrico ($K_s$):**
+
    $$K_s(t) = \begin{cases} 1.0 & \text{si } [TAW - s(t)] \le RAW \\ \max\left(0.0, \min\left(1.0, \frac{s(t)}{TAW - RAW}\right)\right) & \text{si } [TAW - s(t)] > RAW \end{cases}$$
 
 3. **Evapotranspiración real del cultivo ($ET_a$):**
+
    $$ET_a(t) = K_s(t) \cdot ET_c(t)$$
 
 4. **Actualización de la lámina de agua almacenada en el suelo ($s$):**
+
    $$s(t+1) = \min\left(TAW, \max\left(0.0, s(t) + P(t) - ET_a(t)\right)\right)$$
 
 5. **Detección de Anegamiento (*Waterlogging*):**
-   $$\text{Anegamiento}(t) = 1 \iff [s(t) + P(t) - ET_a(t) - TAW] \ge 15.0\text{ mm/día}$$
+
+   $$\text{Anegamiento}(t) = 1 \iff [s(t) + P(t) - ET_a(t) - TAW] \ge 15.0\text{ mm/dia}$$
 
 #### Criterio Estricto de Viabilidad Agronómica:
 Una ventana fenológica se califica formalmente como **VIABLE** ($y = 1$) si y sólo si:
-$$\frac{\sum_{t=1}^{60} ET_a(t)}{\sum_{t=1}^{60} ET_c(t)} \ge 0.90 \quad \land \quad \sum_{t=1}^{60} \text{Anegamiento}(t) \le 8\text{ días}$$
+
+$$\frac{\sum_{t=1}^{60} ET_a(t)}{\sum_{t=1}^{60} ET_c(t)} \ge 0.90 \quad \land \quad \sum_{t=1}^{60} \text{Anegamiento}(t) \le 8\text{ dias}$$
 
 ---
 
@@ -261,7 +317,9 @@ Modela la distribución de precipitación en una serie continua de 120 días pos
 
 #### Detección Algorítmica de la Canícula:
 Se identifica la canícula si durante los meses de julio o agosto ocurre una racha de sequía continuada en las etapas 2 o 3:
-$$\text{Canícula Detectada} = \text{True} \iff \max(\text{Días Secos Consecutivos}) \ge 6\text{ días}$$
+
+$$\text{Canicula Detectada} = \text{True} \iff \max(\text{Dias Secos Consecutivos}) \ge 6\text{ dias}$$
+
 * **Leve:** 6 a 9 días secos continuos.
 * **Moderada:** 10 a 14 días secos continuos.
 * **Severa:** $\ge 15$ días secos continuos (pérdidas agronómicas severas en secano).
@@ -291,13 +349,15 @@ $$\text{Canícula Detectada} = \text{True} \iff \max(\text{Días Secos Consecuti
 * `subsample=0.8`, `colsample_bytree=0.8`, `min_child_weight=20`.
 * Regularización L1 (`reg_alpha=0.5`) y L2 (`reg_lambda=5.0`).
 * Ponderación de desbalance de clases:
-  $$\text{scale\_pos\_weight} = \frac{N_{\text{negativos}}}{N_{\text{positivos}}}$$
+
+  $$\mathrm{scale\_pos\_weight} = \frac{N_{\mathrm{negativos}}}{N_{\mathrm{positivos}}}$$
 
 #### Validación Temporal Cruzada y Métricas:
 * **División por Años Completos:** Validación con `GroupKFold(n_splits=5)` agrupada estrictamente por año agrícola para evitar filtración temporal (*zero temporal leakage*).
 * **Calibración Sigmoidea:** Calibración probabilística Platt Scaling mediante `CalibratedClassifierCV`.
 * **Brier Skill Score (BSS):**
-  $$BSS = 1 - \frac{\text{Brier Score}_{\text{modelo}}}{\text{Brier Score}_{\text{climatología}}}$$
+
+  $$BSS = 1 - \frac{\text{Brier Score}_{\mathrm{modelo}}}{\text{Brier Score}_{\mathrm{climatologia}}}$$
 
 #### Criterio del Semáforo Agronómico Tri-Color:
 
@@ -313,15 +373,24 @@ $$\text{Canícula Detectada} = \text{True} \iff \max(\text{Días Secos Consecuti
 
 #### 1. Geometría y Agrimensura Rural:
 * **Rectángulo:**
-  $$\text{Área } (m^2) = \text{Ancho} \cdot \text{Largo}, \quad \text{Perímetro } (m) = 2 \cdot (\text{Ancho} + \text{Largo})$$
+
+  $$\text{Area } (m^2) = \text{Ancho} \cdot \text{Largo}, \quad \text{Perimetro } (m) = 2 \cdot (\text{Ancho} + \text{Largo})$$
+
 * **Triángulo (Fórmula de Herón con semiperímetro $s$):**
-  $$s = \frac{a + b + c}{2}, \quad \text{Área } (m^2) = \sqrt{s(s - a)(s - b)(s - c)}$$
+
+  $$s = \frac{a + b + c}{2}, \quad \text{Area } (m^2) = \sqrt{s(s - a)(s - b)(s - c)}$$
+
 * **Cuadrilátero Irregular (Técnica Agrimensura Tradicional MAGA):**
-  $$\text{Área } (m^2) = \left(\frac{a + c}{2}\right) \cdot \left(\frac{b + d}{2}\right)$$
+
+  $$\text{Area } (m^2) = \left(\frac{a + c}{2}\right) \cdot \left(\frac{b + d}{2}\right)$$
+
   Donde $a$ (sur), $b$ (este), $c$ (norte) y $d$ (oeste) son los cuatro linderos perimetrales.
+
 * **Conversión Oficial Agraria de Guatemala:**
-  $$\text{Superficie en Manzanas (mz)} = \frac{\text{Área } (m^2)}{7,000.0}$$
-  $$\text{Superficie en Hectáreas (ha)} = \frac{\text{Área } (m^2)}{10,000.0}$$
+
+  $$\text{Superficie en Manzanas (mz)} = \frac{\text{Area } (m^2)}{7,000.0}$$
+
+  $$\text{Superficie en Hectareas (ha)} = \frac{\text{Area } (m^2)}{10,000.0}$$
 
 #### 2. Densidad Agronómica y Semilla Requerida:
 * **Densidad según Semáforo:**
@@ -330,19 +399,29 @@ $$\text{Canícula Detectada} = \text{True} \iff \max(\text{Días Secos Consecuti
   * Semáforo Rojo: $3.6\text{ plantas}/m^2$ ($25,200\text{ plantas}/mz$). Distanciamiento: $90\text{ cm} \times 31\text{ cm}$.
 * **Factor de Seguridad de Siembra:**
   Toma en cuenta un poder germinativo comercial del $88\%$ y una supervivencia de emergencia en campo del $92\%$:
+
   $$\text{Semillas Totales} = \frac{\text{Plantas Totales}}{0.88 \cdot 0.92} \approx \text{Plantas Totales} \cdot 1.235$$
+
   $$\text{Bolsas Comerciales} = \frac{\text{Semillas Totales}}{60,000}, \quad \text{Libras} = \frac{\text{Semillas Totales}}{1,400}$$
 
 #### 3. Proyección Financiera (P&L):
 * **Rendimiento Esperado:**
-  $$\text{Rendimiento (qq/mz)} = 65.0 \cdot \left(0.40 + 0.60 \cdot P_{\text{cal}}\right)$$
-  $$\text{Producción Total (qq)} = \text{Rendimiento (qq/mz)} \cdot \text{Manzanas}$$
+
+  $$\text{Rendimiento (qq/mz)} = 65.0 \cdot \left(0.40 + 0.60 \cdot P_{\mathrm{cal}}\right)$$
+
+  $$\text{Produccion Total (qq)} = \text{Rendimiento (qq/mz)} \cdot \text{Manzanas}$$
+
 * **Estado Financiero:**
-  $$\text{Ingreso Bruto (Q)} = \text{Producción Total (qq)} \cdot \text{Precio MAGA (Q/qq)}$$
+
+  $$\text{Ingreso Bruto (Q)} = \text{Produccion Total (qq)} \cdot \text{Precio MAGA (Q/qq)}$$
+
   $$\text{Utilidad Neta (Q)} = \text{Ingreso Bruto (Q)} - \text{Capital Invertido (Q)}$$
-  $$\text{ROI (\%)} = \left(\frac{\text{Utilidad Neta}}{\text{Capital Invertido}}\right) \cdot 100$$
+
+  $$\text{ROI (pct)} = \left(\frac{\text{Utilidad Neta}}{\text{Capital Invertido}}\right) \cdot 100$$
+
   $$\text{Punto de Equilibrio (qq)} = \frac{\text{Capital Invertido (Q)}}{\text{Precio MAGA (Q/qq)}}$$
-  $$\text{Inversión por Quintal (Q/qq)} = \frac{\text{Capital Invertido (Q)}}{\text{Producción Total (qq)}}$$
+
+  $$\text{Inversion por Quintal (Q/qq)} = \frac{\text{Capital Invertido (Q)}}{\text{Produccion Total (qq)}}$$
 
 ---
 

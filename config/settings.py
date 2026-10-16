@@ -122,6 +122,39 @@ class SemaforoConfig:
 
 
 @dataclass(frozen=True)
+class ValidationConfig:
+    """
+    Límites de validación de entradas basados en datos históricos del sector agrícola
+    de Jutiapa, Guatemala (Corredor Seco).
+    Fuentes: ICTA, MAGA-DIPLAN, FAO Guatemala, datos de campo extensionistas.
+    """
+    # Límites geográficos exclusivos de la micro-región de Calderas, San José Acatempa, Jutiapa
+    lat_min: float = 14.240
+    lat_max: float = 14.290
+    lon_min: float = -90.160
+    lon_max: float = -90.110
+    localidad_exclusiva: str = "Calderas, San José Acatempa, Jutiapa"
+
+    # Límites de fecha de análisis
+    date_min_year: int = 1981
+    date_max_year: int = 2030
+
+    # Límites financieros históricos para el Corredor Seco (Q por manzana)
+    capital_min_q: float = 500.0          # Mínimo absoluto (ni semilla se compra)
+    capital_max_q: float = 150_000.0      # Máximo razonable para agricultura familiar
+    capital_per_mz_min_q: float = 2_000.0 # Mínimo histórico por manzana (subsistencia extrema)
+    capital_per_mz_max_q: float = 25_000.0 # Máximo histórico por manzana (tecnificado con riego)
+
+    # Límites de terreno
+    side_min_m: float = 1.0
+    side_max_m: float = 2_000.0
+    max_area_m2: float = 700_000.0  # 100 manzanas (límite razonable)
+
+    # Límites de strings anti-inyección
+    max_string_length: int = 100
+
+
+@dataclass(frozen=True)
 class PathConfig:
     """Rutas de directorios del proyecto."""
     root_dir: Path = Path(__file__).resolve().parent.parent
@@ -144,4 +177,5 @@ SOIL_CONFIG = SoilConfig()
 MACRO_CONFIG = MacroClimateConfig()
 MAGA_CONFIG = MagaPriceConfig()
 SEMAFORO_CONFIG = SemaforoConfig()
+VALIDATION_CONFIG = ValidationConfig()
 PATH_CONFIG = PathConfig()

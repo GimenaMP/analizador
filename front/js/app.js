@@ -861,6 +861,101 @@ document.addEventListener('DOMContentLoaded', () => {
       sensitivityTableBody.appendChild(tr);
     });
 
+    // 6. Auditoría de Inversión y Límites Históricos
+    const capAuditText = document.getElementById('capitalAuditText');
+    const capWarningBanner = document.getElementById('capitalWarningBanner');
+    if (capAuditText) {
+      const capVal = f.capital_inversion_q;
+      const mzVal = terr.manzanas || 1.0;
+      const capMz = capVal / mzVal;
+      capAuditText.textContent = `Capital ingresado: Q ${capVal.toLocaleString(undefined, {minimumFractionDigits: 2})} (Equivalente a Q ${capMz.toLocaleString(undefined, {minimumFractionDigits: 2})}/mz para ${mzVal.toFixed(2)} mz). Rango histórico regional en el Corredor Seco: Q 2,000 - Q 25,000/mz. Entradas sanitizadas activamente con cero tolerancia a inyección y malversación.`;
+    }
+    if (capWarningBanner) {
+      if (data.capital_warnings && data.capital_warnings.length > 0) {
+        capWarningBanner.style.display = 'block';
+        capWarningBanner.textContent = data.capital_warnings[0];
+      } else {
+        capWarningBanner.style.display = 'none';
+      }
+    }
+
+    // 7. Evaluación de Rachas Hídricas por Etapa Fenológica
+    const streakData = data.rain_streak_report;
+    const streakSection = document.getElementById('streakBoxSection');
+    const streakStagesBody = document.getElementById('streakStagesTableBody');
+    const streakVerdictTitle = document.getElementById('streakVerdictTitle');
+    const streakVerdictStatus = document.getElementById('streakVerdictStatus');
+    const streakVerdictBanner = document.getElementById('streakVerdictBanner');
+    const streakCaniculaBadge = document.getElementById('streakCaniculaBadge');
+    const streakAlertsBox = document.getElementById('streakAlertsBox');
+    const streakAlertsText = document.getElementById('streakAlertsText');
+    const streakDirectiveText = document.getElementById('streakDirectiveText');
+
+    if (streakData && streakStagesBody) {
+      if (streakSection) streakSection.style.display = 'block';
+
+      // Veredicto
+      const verd = streakData.veredicto_general || 'APTO PARA SIEMBRA';
+      if (streakVerdictTitle) streakVerdictTitle.textContent = verd;
+      if (streakVerdictStatus) streakVerdictStatus.textContent = `DICTAMEN FENOLÓGICO (PUNTAJE: ${streakData.puntaje_riesgo_pct || 'N/D'})`;
+
+      if (streakVerdictBanner) {
+        if (verd === 'APTO PARA SIEMBRA') {
+          streakVerdictBanner.style.background = '#ECFDF5';
+          streakVerdictBanner.style.borderColor = '#A7F3D0';
+          if (streakVerdictTitle) streakVerdictTitle.style.color = '#065F46';
+        } else if (verd === 'SIEMBRA CON PRECAUCIÓN') {
+          streakVerdictBanner.style.background = '#FEFCE8';
+          streakVerdictBanner.style.borderColor = '#FEF08A';
+          if (streakVerdictTitle) streakVerdictTitle.style.color = '#92400E';
+        } else {
+          streakVerdictBanner.style.background = '#FEF2F2';
+          streakVerdictBanner.style.borderColor = '#FECACA';
+          if (streakVerdictTitle) streakVerdictTitle.style.color = '#991B1B';
+        }
+      }
+
+      if (streakCaniculaBadge) {
+        const can = streakData.canicula || {};
+        streakCaniculaBadge.textContent = can.detectada ?
+          `Canícula: ${can.severidad} (${can.dias_duracion} días secos)` :
+          `Canícula: No severa`;
+      }
+
+      // Tabla de etapas
+      streakStagesBody.innerHTML = '';
+      (streakData.tabla_etapas || []).forEach(stg => {
+        const tr = document.createElement('tr');
+        const isCritical = (stg.nivel_riesgo || '').includes('Crítico') || (stg.nivel_riesgo || '').includes('Alto');
+        const riskColor = isCritical ? 'color: #DC2626; font-weight: 700;' : 'color: #059669; font-weight: 600;';
+
+        tr.innerHTML = `
+          <td><strong>${stg.etapa}</strong></td>
+          <td style="text-align: center; color: var(--text-secondary);">${stg.dias}</td>
+          <td style="text-align: center; font-weight: 600;">${stg.lluvia_total}</td>
+          <td style="text-align: center;">${stg.racha_seca_max}</td>
+          <td style="text-align: center;">${stg.racha_humeda_max}</td>
+          <td style="text-align: center; ${riskColor}">${stg.nivel_riesgo} • ${stg.adecuacion}</td>
+        `;
+        streakStagesBody.appendChild(tr);
+      });
+
+      // Alertas
+      if (streakAlertsBox && streakAlertsText) {
+        if (streakData.alertas_criticas && streakData.alertas_criticas.length > 0) {
+          streakAlertsBox.style.display = 'block';
+          streakAlertsText.textContent = streakData.alertas_criticas.join('; ');
+        } else {
+          streakAlertsBox.style.display = 'none';
+        }
+      }
+
+      // Directiva
+      if (streakDirectiveText && streakData.directiva_agronomica) {
+        streakDirectiveText.textContent = streakData.directiva_agronomica;
+      }
+    }
+
     // Exportación de Dictamen Técnico en PDF (RF-08) - 100% en cliente sin dependencia de archivos estáticos
     btnDownloadPdf.removeAttribute('target');
     btnDownloadPdf.href = '#';

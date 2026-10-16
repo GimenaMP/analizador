@@ -44,6 +44,16 @@ from core.agronomy_economics import (
     calculate_financial_projection,
     calcular_analisis_pluviometrico,
 )
+from core.input_validator import (
+    validate_and_sanitize,
+    ValidationError,
+    get_validation_summary,
+)
+from core.rain_streak_analyzer import (
+    analyze_rain_streaks,
+    generate_streak_pdf_section,
+    RainStreakReport,
+)
 from reporting.visualizer import (
     plot_water_balance_window,
     plot_terrain_layout,
@@ -75,6 +85,9 @@ class PipelineResult:
     criterios_algoritmo: Dict[str, Any] = field(default_factory=dict)
     evaluacion_historica: Dict[str, Any] = field(default_factory=dict)
     report_pdf_path: Optional[str] = None
+    capital_warnings: List[str] = field(default_factory=list)
+    validation_summary: Dict[str, Any] = field(default_factory=dict)
+    rain_streak_report: Optional[Dict[str, Any]] = None
 
 
 class AgroViabilityPipeline:
@@ -176,8 +189,29 @@ class AgroViabilityPipeline:
         """
         Ejecuta el ciclo de cómputo completo para una fecha y parcela dada.
         """
-        active_lat = lat if lat is not None else self.geo_cfg.lat
-        active_lon = lon if lon is not None else self.geo_cfg.lon
+        # 0. Validación y sanitización estricta de entradas (RF-01 / Anti-inyección / Límites)
+        validated = validate_and_sanitize(
+            sowing_date=sowing_date_str,
+            lat=lat if lat is not None else self.geo_cfg.lat,
+            lon=lon if lon is not None else self.geo_cfg.lon,
+            shape_type=shape_type,
+            sides=terrain_sides,
+            width=terrain_width_m,
+            length=terrain_length_m,
+            capital=capital_disponible_q,
+            corn_type=tipo_maiz,
+        )
+        sowing_date_str = validated.sowing_date
+        active_lat = validated.lat
+        active_lon = validated.lon
+        shape_type = validated.shape_type
+        terrain_sides = validated.sides
+        terrain_width_m = validated.width
+        terrain_length_m = validated.length
+        capital_disponible_q = validated.capital
+        tipo_maiz = validated.corn_type
+        capital_warnings = validated.capital_warnings
+        validation_summary = get_validation_summary(validated)
 
         geo_active = GeoConfig(
             lat=active_lat,
@@ -374,8 +408,46 @@ class AgroViabilityPipeline:
                 "nota_discrepancia": nota,
             }
 
-        # 8. Extraer Serie de Lluvias Real de 60 Días (RF-04)
+        # 8. Extraer Serie de Lluvias Real de 60 Días (RF-04) y Ciclo Fenológico Completo de 120 Días
         timeline_data = self.extract_timeline(ds, sowing_date_str)
+
+        # Extracción de la serie diaria de 120 días del ciclo del maíz para análisis de rachas
+        s_ts = pd.to_datetime(sowing_date_str)
+        cycle_days = 120
+        sub_120 = ds[(ds["time"] >= s_ts) & (ds["time"] < s_ts + pd.Timedelta(days=cycle_days))].copy()
+
+        if len(sub_120) >= cycle_days:
+            p_120 = sub_120["precip_mm"].round(2).tolist()
+        else:
+            # Reanálisis diario histórico de 45 años día por día para cada uno de los 120 días
+            p_120 = []
+            start_doy = s_ts.dayofyear
+            for i in range(cycle_days):
+                cur_doy = ((start_doy - 1 + i) % 365) + 1
+                day_history = ds[ds["time"].dt.dayofyear == cur_doy]
+                r_val = float(day_history["precip_mm"].median()) if not day_history.empty else 2.5
+                p_120.append(round(r_val, 2))
+
+        # Ejecutar análisis especializado de rachas pluviométricas y distribución fenológica
+        streak_report = analyze_rain_streaks(p_120, sowing_date_str)
+        streak_section = generate_streak_pdf_section(streak_report)
+
+        # CALIBRACIÓN RIGUROSA CONTRA FALSOS POSITIVOS Y FALSOS NEGATIVOS (Calderas / Corredor Seco):
+        # El maíz no tolera ni sequía extrema ni exceso anegante.
+        # Si el análisis fenológico detecta fallas críticas en germinación (días 1-15) o floración R1 (días 56-75):
+        if streak_report.overall_verdict == "NO APTO PARA SIEMBRA" or len(streak_report.critical_alerts) > 0:
+            prob = min(prob, 0.35)  # Castigo de probabilidad para evitar falso positivo
+            estado = "NO SEMBRAR"
+            color = "Rojo"
+            alerta_msg = streak_report.critical_alerts[0] if streak_report.critical_alerts else "Falla crítica por rachas hídricas en fases fenológicas cardinales."
+            accion = f"DICTAMEN ADVERSO (Fallo Fenológico): {alerta_msg}. No se recomienda siembra a temporal."
+        elif streak_report.overall_verdict == "SIEMBRA CON PRECAUCIÓN":
+            if color == "Verde":
+                color = "Amarillo"
+                estado = "CONDICIONADO O EN ALERTA"
+                prob = min(prob, 0.74)
+                issue_msg = streak_report.stages[0].issues[0] if (streak_report.stages and streak_report.stages[0].issues) else "Riesgo moderado de canícula o déficit."
+                accion = f"CONDICIONADO: {issue_msg}. Adoptar variedades precoces y técnicas de retención de humedad."
 
         # 9. Generación de Gráficos (RF-03, RF-04, RF-05)
         chart_paths = {}
@@ -423,6 +495,9 @@ class AgroViabilityPipeline:
             "densidad": densidad,
             "financiero": financiero,
             "analisis_pluviometrico": calcular_analisis_pluviometrico(sowing_date_str, fase),
+            "capital_warnings": capital_warnings,
+            "validation_summary": validation_summary,
+            "analisis_rachas": streak_section,
         }
 
         pdf_path = None
@@ -449,5 +524,8 @@ class AgroViabilityPipeline:
             timeline=timeline_data,
             criterios_algoritmo=criterios_algoritmo,
             evaluacion_historica=evaluacion_historica,
-            report_pdf_path=str(pdf_path) if pdf_path else None
+            report_pdf_path=str(pdf_path) if pdf_path else None,
+            capital_warnings=capital_warnings,
+            validation_summary=validation_summary,
+            rain_streak_report=streak_section,
         )

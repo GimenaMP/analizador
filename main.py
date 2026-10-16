@@ -11,12 +11,12 @@ from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Sistema Abierto de Viabilidad de Siembra de Maíz y Proyección Financiera - Jutiapa (Guatemala)",
+        description="Sistema de Viabilidad Agrícola y Dictamen Técnico para Maíz Blanco - EXCLUSIVO PARA CALDERAS, SAN JOSÉ ACATEMPA, JUTIAPA",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument("--date", type=str, default="2026-06-01", help="Fecha tentativa de siembra (AAAA-MM-DD)")
-    parser.add_argument("--lat", type=float, default=14.267, help="Latitud decimal de la parcela")
-    parser.add_argument("--lon", type=float, default=-90.133, help="Longitud decimal de la parcela")
+    parser.add_argument("--lat", type=float, default=14.267, help="Latitud de la parcela (Exclusivo Calderas, San José Acatempa)")
+    parser.add_argument("--lon", type=float, default=-90.133, help="Longitud de la parcela (Exclusivo Calderas, San José Acatempa)")
     parser.add_argument("--shape", type=str, default="cuadrilatero", choices=["cuadrilatero", "triangulo", "rectangulo"], help="Forma geométrica del terreno")
     parser.add_argument("--sides", type=float, nargs="+", default=[100.0, 70.0, 90.0, 65.0], help="Medidas de los lados en metros (ej. 4 lados para cuadrilátero, 3 para triángulo)")
     parser.add_argument("--width", type=float, default=100.0, help="Ancho del terreno en metros (si es rectangular)")
@@ -108,12 +108,43 @@ def main():
     print(f"  * Punto de Equilibrio:           {f['punto_equilibrio_qq']} quintales")
     print(f"  * Inversión por Quintal:         Q {f['inversion_por_quintal_q']:.2f} / qq")
 
+    if result.capital_warnings:
+        print("\n" + "!" * 70)
+        print("ADVERTENCIA DE CAPITAL Y LÍMITES HISTÓRICOS:")
+        for w in result.capital_warnings:
+            print(f"  [AVISO] {w}")
+        print("!" * 70)
+
+    # Evaluación de Rachas Hídricas por Etapa Fenológica
+    if result.rain_streak_report:
+        rs = result.rain_streak_report
+        print("\n" + "-" * 70)
+        print("EVALUACIÓN DE RACHAS HÍDRICAS Y FENOLOGÍA (120 DÍAS - CORREDOR SECO):")
+        print(f"  * Veredicto Fenológico:    [{rs.get('veredicto_general', 'N/D')}]")
+        print(f"  * Puntaje de Riesgo:       {rs.get('puntaje_riesgo_pct', 'N/D')} (Distribución: {rs.get('calidad_distribucion', 'N/D')})")
+        print(f"  * Lluvia Total del Ciclo:  {rs.get('total_precipitacion_ciclo_mm', 'N/D')}")
+        can = rs.get("canicula", {})
+        if can.get("detectada"):
+            print(f"  * Canícula Intra-estival:  DETECTADA ({can.get('severidad', '')}) - {can.get('dias_duracion', 0)} días consecutivos sin lluvia efectiva (<1.5mm)")
+        else:
+            print(f"  * Canícula Intra-estival:  No severa")
+        
+        print(f"\n  {'Etapa Fenológica':<30} | {'Días':<10} | {'Lluvia':<10} | {'Racha Seca':<12} | {'Riesgo'}")
+        print("  " + "-" * 68)
+        for stg in rs.get("tabla_etapas", []):
+            print(f"  {stg.get('etapa', ''):<30} | {stg.get('dias', ''):<10} | {stg.get('lluvia_total', ''):<10} | {stg.get('racha_seca_max', ''):<12} | {stg.get('nivel_riesgo', '')}")
+
+        if rs.get("alertas_criticas"):
+            print("\n  ALERTAS CRÍTICAS BLOQUEANTES:")
+            for al in rs.get("alertas_criticas", []):
+                print(f"    [!] {al}")
+
     print("\n" + "-" * 70)
-    print("PROYECCIÓN ESTACIONAL PARA PRÓXIMOS MESES:")
-    print(f"{'Mes Objetivo':<16} | {'Probabilidad':<14} | {'Estado':<20} | {'Fase ENSO'}")
-    print("-" * 70)
-    for p in result.proyecciones_futuras:
-        print(f"{p['mes_nombre']:<16} | {p['probabilidad']*100:11.1f}%   | {p['estado']:<20} | {p['fase_enso']}")
+    print("AVISO LEGAL Y DESLINDE DE RESPONSABILIDAD:")
+    print("  Este sistema proporciona estimaciones basadas en reanálisis ERA5 y modelos agronómicos.")
+    print("  Constituye exclusivamente una herramienta de apoyo técnico a la decisión.")
+    print("  LA DECISIÓN FINAL DE SEMBRAR O NO SEMBRAR RECAE EXCLUSIVAMENTE BAJO LA RESPONSABILIDAD")
+    print("  DEL AGRICULTOR O PRODUCTOR CONSULTANTE.")
 
     print("\n" + "=" * 70)
     print("ARCHIVOS GENERADOS:")

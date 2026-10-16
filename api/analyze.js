@@ -30,11 +30,32 @@ export default async function handler(req, res) {
     const sowingDate = payload.date || '2026-06-01';
     const lat = parseFloat(payload.lat) || 14.267;
     const lon = parseFloat(payload.lon) || -90.133;
+
+    // 0. Validación de Exclusividad Geográfica: Calderas, San José Acatempa, Jutiapa
+    if (lat < 14.240 || lat > 14.290 || lon < -90.160 || lon > -90.110) {
+      res.status(400).json({
+        success: false,
+        error: `UBICACIÓN NO PERMITIDA: Este sistema está diseñado, calibrado y habilitado ÚNICAMENTE para Calderas, San José Acatempa, Jutiapa (Guatemala). Coordenadas recibidas: (${lat}, ${lon}). Límite permitido para Calderas: Lat [14.24, 14.29], Lon [-90.16, -90.11].`,
+        validation_error: true
+      });
+      return;
+    }
+
     const shapeType = payload.shape_type || 'rectangulo';
     const sides = Array.isArray(payload.sides) ? payload.sides.map(Number) : [100, 70];
     const width = parseFloat(payload.width) || sides[0] || 100;
     const length = parseFloat(payload.length) || sides[1] || 70;
     const capitalInversion = parseFloat(payload.capital) || 7200;
+
+    // Validación de Capital Mínimo
+    if (capitalInversion < 500) {
+      res.status(400).json({
+        success: false,
+        error: "El capital de inversión mínimo permitido es de Q 500.00.",
+        validation_error: true
+      });
+      return;
+    }
 
     // Obtener precio en tiempo real mediante scraper oficial del MAGA
     const magaData = await getLiveMagaPrice();
@@ -247,20 +268,117 @@ export default async function handler(req, res) {
       probCalculada = Math.min(probCalculada, 0.28);
     }
 
-    // Determinación del Semáforo Agronómico
-    let semaforoEstado = 'NO SEMBRAR';
-    let semaforoColor = 'Rojo';
-    let semaforoAccion = 'Riesgo crítico de fracaso hídrico por cese de lluvias en floración o déficit severo. No se recomienda siembra a temporal sin riego.';
-
-    if (probCalculada >= 0.70) {
-      semaforoEstado = 'ÓPTIMO';
-      semaforoColor = 'Verde';
-      semaforoAccion = 'Condiciones hídricas altamente favorables (cobertura > 90%). Proceder con siembra tecnificada en fecha programada.';
-    } else if (probCalculada >= 0.40) {
-      semaforoEstado = 'CONDICIONADO O EN ALERTA';
-      semaforoColor = 'Amarillo';
-      semaforoAccion = 'Riesgo hídrico moderado: emplear variedades precoces o tolerantes a sequía, labranza de conservación y monitoreo de humedad.';
+    // Cálculo de rachas hídricas en las 4 etapas fenológicas (120 días)
+    const p120 = [...timelinePrecipDaily];
+    while (p120.length < 120) {
+      const dayIdx = p120.length;
+      const futureD = new Date(sowingDate);
+      futureD.setDate(futureD.getDate() + dayIdx);
+      const clim = getClimatologyDaily(futureD.getMonth() + 1, futureD.getDate());
+      p120.push(clim ? clim.p : 2.5);
     }
+
+    const stage1Rain = p120.slice(0, 15).reduce((a, b) => a + b, 0);
+    const stage2Rain = p120.slice(15, 55).reduce((a, b) => a + b, 0);
+    const stage3Rain = p120.slice(55, 75).reduce((a, b) => a + b, 0);
+    const stage4Rain = p120.slice(75, 120).reduce((a, b) => a + b, 0);
+
+    const getLongestStreak = (arr, cond) => {
+      let maxLen = 0, cur = 0;
+      for (const v of arr) {
+        if (cond(v)) { cur++; if (cur > maxLen) maxLen = cur; }
+        else cur = 0;
+      }
+      return maxLen;
+    };
+
+    const s1Dry = getLongestStreak(p120.slice(0, 15), v => v < 1.0);
+    const s1Wet = getLongestStreak(p120.slice(0, 15), v => v > 15.0);
+    const s2Dry = getLongestStreak(p120.slice(15, 55), v => v < 1.5);
+    const s2Wet = getLongestStreak(p120.slice(15, 55), v => v > 20.0);
+    const s3Dry = getLongestStreak(p120.slice(55, 75), v => v < 2.0);
+    const s3Wet = getLongestStreak(p120.slice(55, 75), v => v > 25.0);
+    const s4Dry = getLongestStreak(p120.slice(75, 120), v => v < 1.5);
+    const s4Wet = getLongestStreak(p120.slice(75, 120), v => v > 15.0);
+
+    const criticalAlerts = [];
+    if (s1Dry > 7) criticalAlerts.push("Falla crítica en Germinación (Etapa 1): >7 días continuos sin lluvia (<1 mm/día). Desecación de semilla.");
+    if (s1Wet > 5) criticalAlerts.push("Falla crítica en Germinación (Etapa 1): >5 días continuos con lluvia torrencial (>15 mm/día). Pudrición de simiente por anoxia.");
+    if (s3Dry > 4) criticalAlerts.push(`Falla letal en Floración (Etapa 3 - CRÍTICA): ${s3Dry} días continuos con lluvia <2 mm/día. Desecación de polen y estigmas.`);
+    if (s2Dry > 10) criticalAlerts.push(`Falla en Desarrollo Vegetativo (Etapa 2): ${s2Dry} días secos continuos. Enanismo y retraso de masa foliar.`);
+
+    const total120Rain = +(p120.reduce((a, b) => a + b, 0)).toFixed(1);
+    if (total120Rain < 400) criticalAlerts.push(`Precipitación total del ciclo críticamente insuficiente: ${total120Rain} mm acumulados frente al mínimo de 400 mm.`);
+
+    // Calibración estricta contra Falsos Positivos y Falsos Negativos
+    if (criticalAlerts.length > 0) {
+      probCalculada = Math.min(probCalculada, 0.35);
+      semaforoEstado = 'NO SEMBRAR';
+      semaforoColor = 'Rojo';
+      semaforoAccion = `DICTAMEN ADVERSO (Fallo Fenológico): ${criticalAlerts[0]} No se recomienda siembra a temporal en Calderas.`;
+    }
+
+    // Advertencias de Capital según costos históricos locales
+    const capitalWarnings = [];
+    const capitalPerMz = capitalInversion / Math.max(0.001, manzanas);
+    if (capitalPerMz < 2000) {
+      capitalWarnings.push(`Advertencia de Capital: La inversión ingresada (Q ${capitalInversion.toLocaleString()}) equivale a Q ${Math.round(capitalPerMz).toLocaleString()}/mz, inferior al costo mínimo histórico de subsistencia en Jutiapa (Q 2,000.00/mz).`);
+    } else if (capitalPerMz > 25000) {
+      capitalWarnings.push(`Advertencia de Capital: La inversión ingresada (Q ${capitalInversion.toLocaleString()}) equivale a Q ${Math.round(capitalPerMz).toLocaleString()}/mz, superior al costo promedio de producción altamente tecnificada con riego (Q 25,000.00/mz).`);
+    }
+
+    const rainStreakReport = {
+      veredicto_general: criticalAlerts.length > 0 ? "NO APTO PARA SIEMBRA" : semaforoColor === 'Amarillo' ? "SIEMBRA CON PRECAUCIÓN" : "APTO PARA SIEMBRA",
+      puntaje_riesgo: +probCalculada.toFixed(3),
+      puntaje_riesgo_pct: `${(probCalculada * 100).toFixed(1)}%`,
+      calidad_distribucion: criticalAlerts.length > 0 ? "Deficiente" : semaforoColor === 'Verde' ? "Buena" : "Regular",
+      total_precipitacion_ciclo_mm: `${total120Rain} mm`,
+      alertas_criticas: criticalAlerts,
+      canicula: {
+        detectada: s2Dry >= 5,
+        severidad: s2Dry >= 15 ? "Severa" : s2Dry >= 8 ? "Moderada" : s2Dry >= 5 ? "Leve" : "Ninguna",
+        dias_duracion: s2Dry
+      },
+      tabla_etapas: [
+        {
+          etapa: "Germinación y Emergencia",
+          dias: "Días 1-15",
+          lluvia_total: `${stage1Rain.toFixed(1)} mm`,
+          racha_seca_max: `${s1Dry} días`,
+          racha_humeda_max: `${s1Wet} días`,
+          adecuacion: stage1Rain < 20 ? "Déficit Severo" : stage1Rain > 80 ? "Exceso Moderado" : "Adecuado",
+          nivel_riesgo: (s1Dry > 7 || s1Wet > 5) ? "Crítico" : stage1Rain < 20 ? "Alto" : "Bajo"
+        },
+        {
+          etapa: "Desarrollo Vegetativo",
+          dias: "Días 16-55",
+          lluvia_total: `${stage2Rain.toFixed(1)} mm`,
+          racha_seca_max: `${s2Dry} días`,
+          racha_humeda_max: `${s2Wet} días`,
+          adecuacion: stage2Rain < 150 ? "Déficit Moderado" : "Adecuado",
+          nivel_riesgo: s2Dry > 10 ? "Crítico" : s2Dry >= 5 ? "Moderado" : "Bajo"
+        },
+        {
+          etapa: "Floración y Polinización",
+          dias: "Días 56-75",
+          lluvia_total: `${stage3Rain.toFixed(1)} mm`,
+          racha_seca_max: `${s3Dry} días`,
+          racha_humeda_max: `${s3Wet} días`,
+          adecuacion: stage3Rain < 60 ? "Déficit Severo" : "Adecuado",
+          nivel_riesgo: s3Dry > 4 ? "Crítico" : "Bajo"
+        },
+        {
+          etapa: "Llenado de Grano",
+          dias: "Días 76-120",
+          lluvia_total: `${stage4Rain.toFixed(1)} mm`,
+          racha_seca_max: `${s4Dry} días`,
+          racha_humeda_max: `${s4Wet} días`,
+          adecuacion: stage4Rain < 100 ? "Déficit Moderado" : "Adecuado",
+          nivel_riesgo: stage4Rain < 80 ? "Moderado" : "Bajo"
+        }
+      ],
+      directiva_agronomica: semaforoAccion
+    };
 
     const faseEnso = 'Neutral';
 

@@ -27,6 +27,9 @@ except Exception as e:
     print(f"[Aviso] No se pudo inicializar AgroViabilityPipeline al inicio: {e}")
     PIPELINE_INSTANCE = None
 
+# Seguridad: Límite máximo de tamaño de petición (10 KB para prevenir ataques DoS)
+MAX_REQUEST_BODY_BYTES = 10 * 1024  # 10 KB
+
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Servidor HTTP multihilo para atender solicitudes concurrentes sin bloqueos."""
@@ -73,28 +76,76 @@ class AgroServerHandler(SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self):
-        """Maneja llamadas a la API agrometeorológica y financiera."""
+        """Maneja llamadas a la API agrometeorológica y financiera con validación estricta."""
         if self.path == "/api/analyze":
             content_length = int(self.headers.get("Content-Length", 0))
+
+            # Seguridad: Rechazar peticiones excesivamente grandes
+            if content_length > MAX_REQUEST_BODY_BYTES:
+                self.send_response(413)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": False,
+                    "error": f"El cuerpo de la petición excede el límite de {MAX_REQUEST_BODY_BYTES} bytes."
+                }).encode("utf-8"))
+                return
+
             body = self.rfile.read(content_length).decode("utf-8")
             
             try:
                 params = json.loads(body)
-                sowing_date = params.get("date", "2026-06-01")
-                lat = float(params.get("lat", 14.267))
-                lon = float(params.get("lon", -90.133))
-                
-                # Geometría del terreno (regular o irregular)
-                shape_type = params.get("shape_type", "rectangulo")
-                sides = params.get("sides")
-                if sides and isinstance(sides, list):
-                    sides = [float(s) for s in sides]
-                width = float(params.get("width", 100))
-                length = float(params.get("length", 70))
-                
-                # Inversión aportada directamente por el usuario
-                capital = float(params.get("capital", 6500))
-                corn_type = params.get("corn_type", "blanco")
+
+                # Validación y sanitización de entradas
+                try:
+                    from core.input_validator import validate_and_sanitize, ValidationError
+                    validated = validate_and_sanitize(
+                        sowing_date=params.get("date", "2026-06-01"),
+                        lat=params.get("lat", 14.267),
+                        lon=params.get("lon", -90.133),
+                        shape_type=params.get("shape_type", "rectangulo"),
+                        sides=params.get("sides"),
+                        width=params.get("width", 100),
+                        length=params.get("length", 70),
+                        capital=params.get("capital", 6500),
+                        corn_type=params.get("corn_type", "blanco"),
+                    )
+                    sowing_date = validated.sowing_date
+                    lat = validated.lat
+                    lon = validated.lon
+                    shape_type = validated.shape_type
+                    sides = validated.sides
+                    width = validated.width
+                    length = validated.length
+                    capital = validated.capital
+                    corn_type = validated.corn_type
+                    capital_warnings = validated.capital_warnings
+                except ValidationError as ve:
+                    self.send_response(400)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        "success": False,
+                        "error": f"Error de validación: {str(ve)}",
+                        "validation_error": True
+                    }).encode("utf-8"))
+                    return
+                except ImportError:
+                    # Si el módulo de validación no está disponible, usar valores directos con sanitización básica
+                    sowing_date = str(params.get("date", "2026-06-01"))[:10]
+                    lat = float(params.get("lat", 14.267))
+                    lon = float(params.get("lon", -90.133))
+                    shape_type = params.get("shape_type", "rectangulo")
+                    sides = params.get("sides")
+                    if sides and isinstance(sides, list):
+                        sides = [float(s) for s in sides[:4]]
+                    width = float(params.get("width", 100))
+                    length = float(params.get("length", 70))
+                    capital = float(params.get("capital", 6500))
+                    corn_type = params.get("corn_type", "blanco")
+                    capital_warnings = []
 
                 print(f"[API] Ejecutando análisis para {sowing_date} en ({lat}, {lon}) | Forma: {shape_type} | Capital: Q{capital:,.2f}...")
 
@@ -145,7 +196,9 @@ class AgroServerHandler(SimpleHTTPRequestHandler):
                     "proyecciones_futuras": res.proyecciones_futuras,
                     "criterios_algoritmo": res.criterios_algoritmo,
                     "evaluacion_historica": res.evaluacion_historica,
-                    "report_pdf_path": os.path.basename(res.report_pdf_path) if res.report_pdf_path else None
+                    "report_pdf_path": os.path.basename(res.report_pdf_path) if res.report_pdf_path else None,
+                    "capital_warnings": capital_warnings,
+                    "rain_streak_report": res.rain_streak_report if hasattr(res, 'rain_streak_report') else None,
                 }
 
                 self.send_response(200)

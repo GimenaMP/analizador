@@ -109,7 +109,7 @@ def export_pdf_report(
                 self.set_font("Helvetica", "", 7.5)
                 self.set_text_color(148, 163, 184)
                 self.cell(90, 8, "Plataforma Abierta de Apoyo Técnico al Productor Agrícola", align="L")
-                self.cell(90, 8, f"Página {self.page_no()} de 2", align="R")
+                self.cell(90, 8, f"Página {self.page_no()} de 3", align="R")
 
         pdf = AgriculturalReportPDF(orientation="P", unit="mm", format="A4")
         pdf.set_margins(15, 15, 15)
@@ -380,6 +380,45 @@ def export_pdf_report(
             pdf.cell(29, 4.4, f"Q {util_val:,.2f}  ", border=1, align="R", ln=True)
 
         # ---------------------------------------------------------
+        # AUDITORÍA DE INVERSIÓN Y LÍMITES HISTÓRICOS (PAGE 1)
+        # ---------------------------------------------------------
+        cap_warnings = report_data.get("capital_warnings", [])
+        cap_val = fin.get("capital_inversion_q", 0)
+        mz_val = max(0.001, t.get("manzanas", 1.0))
+        cap_mz = cap_val / mz_val
+
+        pdf.set_y(186)
+        box_bg = (254, 242, 242) if cap_warnings else (248, 250, 252)
+        box_border = (254, 202, 202) if cap_warnings else (226, 232, 240)
+        box_text = (153, 27, 27) if cap_warnings else (27, 77, 62)
+
+        pdf.set_fill_color(*box_bg)
+        pdf.set_draw_color(*box_border)
+        pdf.set_line_width(0.3)
+        pdf.rect(15, 186, 180, 22, "DF")
+
+        pdf.set_xy(18, 187.5)
+        pdf.set_font("Helvetica", "B", 7.6)
+        pdf.set_text_color(*box_text)
+        pdf.cell(174, 3.8, _clean_str("AUDITORÍA DE INVERSIÓN Y LÍMITES HISTÓRICOS (CORREDOR SECO - JUTIAPA):"), ln=True)
+
+        pdf.set_xy(18, 191.8)
+        pdf.set_font("Helvetica", "", 7.0)
+        pdf.set_text_color(51, 65, 85)
+        txt_cap = (
+            f"Capital ingresado por el productor: Q {cap_val:,.2f} (Equivalente a Q {cap_mz:,.2f} por manzana para {mz_val:.2f} mz). "
+            f"Rango histórico de costos en cosechas de maíz en el sector: Q 2,000.00 a Q 25,000.00/mz. "
+            "Parámetros verificados contra inyecciones y desbordes con estricta integridad de datos."
+        )
+        pdf.multi_cell(174, 3.2, _clean_str(txt_cap))
+
+        if cap_warnings:
+            pdf.set_xy(18, 201)
+            pdf.set_font("Helvetica", "B", 6.8)
+            pdf.set_text_color(185, 28, 28)
+            pdf.cell(174, 3.5, _clean_str(f"ADVERTENCIA DE CAPITAL: {cap_warnings[0]}"), ln=True)
+
+        # ---------------------------------------------------------
         # PÁGINA 2: ANÁLISIS PLUVIOMÉTRICO MENSUAL (DÉFICIT O AUMENTO)
         # ---------------------------------------------------------
         rain_analysis = report_data.get("analisis_pluviometrico")
@@ -390,56 +429,56 @@ def export_pdf_report(
         pdf.add_page()
 
         pdf.set_y(24)
-        pdf.set_font("Helvetica", "B", 10.5)
+        pdf.set_font("Helvetica", "B", 10.0)
         pdf.set_text_color(27, 77, 62)
         pdf.cell(0, 5, _clean_str(f"6. ANÁLISIS PLUVIOMÉTRICO: {rain_analysis.get('pregunta_titulo', 'DÉFICIT O AUMENTO DE LLUVIAS')}").upper(), ln=True)
 
-        pdf.set_font("Helvetica", "I", 7.6)
+        pdf.set_font("Helvetica", "I", 7.4)
         pdf.set_text_color(100, 116, 139)
-        pdf.cell(0, 4, _clean_str("Evaluación del régimen de precipitación comparada contra 46 años de series agroclimáticas ERA5 (1981-Presente)"), ln=True)
+        pdf.cell(0, 3.8, _clean_str("Evaluación del régimen de precipitación comparada contra 46 años de series agroclimáticas ERA5 (1981-Presente)"), ln=True)
 
-        pdf.ln(3)
+        pdf.ln(2)
 
         # 6.1 Tabla Comparativa de Meses (Mes, Precipitación, Caracterización climática)
-        pdf.set_font("Helvetica", "B", 8)
+        pdf.set_font("Helvetica", "B", 7.8)
         pdf.set_text_color(30, 41, 59)
-        pdf.cell(0, 4.5, _clean_str("Régimen Pluviométrico Comparativo de la Temporada:"), ln=True)
+        pdf.cell(0, 4.2, _clean_str("Régimen Pluviométrico Comparativo de la Temporada:"), ln=True)
 
         pdf.set_fill_color(241, 245, 249)
         pdf.set_draw_color(203, 213, 225)
         pdf.set_line_width(0.3)
-        pdf.set_font("Helvetica", "B", 7.6)
+        pdf.set_font("Helvetica", "B", 7.4)
         pdf.set_text_color(30, 41, 59)
-        pdf.cell(45, 5, _clean_str("  Mes"), border=1, fill=True)
-        pdf.cell(45, 5, _clean_str("Precipitación  "), border=1, fill=True, align="C")
-        pdf.cell(90, 5, _clean_str("  Caracterización Climática"), border=1, fill=True, ln=True)
+        pdf.cell(45, 4.6, _clean_str("  Mes"), border=1, fill=True)
+        pdf.cell(45, 4.6, _clean_str("Precipitación  "), border=1, fill=True, align="C")
+        pdf.cell(90, 4.6, _clean_str("  Caracterización Climática"), border=1, fill=True, ln=True)
 
         for row in rain_analysis.get("tabla_comparativa", []):
             is_sel = row.get("es_seleccionado", False)
             if is_sel:
                 pdf.set_fill_color(236, 253, 245)
                 pdf.set_text_color(6, 95, 70)
-                pdf.set_font("Helvetica", "B", 7.8)
+                pdf.set_font("Helvetica", "B", 7.6)
                 prefix = "  * "
             else:
                 pdf.set_fill_color(255, 255, 255)
                 pdf.set_text_color(15, 23, 42)
-                pdf.set_font("Helvetica", "", 7.5)
+                pdf.set_font("Helvetica", "", 7.3)
                 prefix = "  "
 
-            pdf.cell(45, 4.8, _clean_str(f"{prefix}{row.get('mes', '')}"), border=1, fill=is_sel)
-            pdf.cell(45, 4.8, _clean_str(f"{row.get('precip', '')}  "), border=1, fill=is_sel, align="C")
-            pdf.cell(90, 4.8, _clean_str(f"  {row.get('caracterizacion', '')}"), border=1, fill=is_sel, ln=True)
+            pdf.cell(45, 4.4, _clean_str(f"{prefix}{row.get('mes', '')}"), border=1, fill=is_sel)
+            pdf.cell(45, 4.4, _clean_str(f"{row.get('precip', '')}  "), border=1, fill=is_sel, align="C")
+            pdf.cell(90, 4.4, _clean_str(f"  {row.get('caracterizacion', '')}"), border=1, fill=is_sel, ln=True)
 
-        pdf.ln(4)
+        pdf.ln(3)
 
         # 6.2 Distribución de la Lluvia dentro del Mes (Decenas)
-        pdf.set_font("Helvetica", "B", 8.2)
+        pdf.set_font("Helvetica", "B", 7.8)
         pdf.set_text_color(27, 77, 62)
-        pdf.cell(0, 4.5, _clean_str(f"Distribución de la Precipitación dentro de {rain_analysis.get('mes_nombre', 'el mes evaluado')}:"), ln=True)
+        pdf.cell(0, 4.2, _clean_str(f"Distribución de la Precipitación dentro de {rain_analysis.get('mes_nombre', 'el mes evaluado')}:"), ln=True)
 
         d_box_w = 57.3
-        d_box_h = 25
+        d_box_h = 22
         d_gap = 4.0
         d_start_x = 15
         d_box_y = pdf.get_y() + 1
@@ -451,66 +490,145 @@ def export_pdf_report(
             pdf.set_line_width(0.3)
             pdf.rect(cx, d_box_y, d_box_w, d_box_h, "DF")
 
-            pdf.set_xy(cx + 2, d_box_y + 1.8)
-            pdf.set_font("Helvetica", "B", 7)
-            pdf.set_text_color(100, 116, 139)
-            pdf.cell(d_box_w - 4, 3.2, _clean_str(f"{dec.get('etiqueta', '')} ({dec.get('porcentaje', '')})"), ln=True, align="C")
-
-            pdf.set_xy(cx + 2, d_box_y + 5.5)
-            pdf.set_font("Helvetica", "B", 10.5)
-            pdf.set_text_color(3, 105, 161)
-            pdf.cell(d_box_w - 4, 5, _clean_str(dec.get("mm", "")), ln=True, align="C")
-
-            pdf.set_xy(cx + 2, d_box_y + 11.2)
+            pdf.set_xy(cx + 2, d_box_y + 1.5)
             pdf.set_font("Helvetica", "B", 6.8)
+            pdf.set_text_color(100, 116, 139)
+            pdf.cell(d_box_w - 4, 3.0, _clean_str(f"{dec.get('etiqueta', '')} ({dec.get('porcentaje', '')})"), ln=True, align="C")
+
+            pdf.set_xy(cx + 2, d_box_y + 4.8)
+            pdf.set_font("Helvetica", "B", 9.5)
+            pdf.set_text_color(3, 105, 161)
+            pdf.cell(d_box_w - 4, 4.5, _clean_str(dec.get("mm", "")), ln=True, align="C")
+
+            pdf.set_xy(cx + 2, d_box_y + 9.8)
+            pdf.set_font("Helvetica", "B", 6.6)
             pdf.set_text_color(15, 23, 42)
-            pdf.cell(d_box_w - 4, 3.2, _clean_str(dec.get("rango", "")), ln=True, align="C")
+            pdf.cell(d_box_w - 4, 3.0, _clean_str(dec.get("rango", "")), ln=True, align="C")
 
-            pdf.set_xy(cx + 2, d_box_y + 15)
-            pdf.set_font("Helvetica", "", 6.4)
+            pdf.set_xy(cx + 2, d_box_y + 13.2)
+            pdf.set_font("Helvetica", "", 6.2)
             pdf.set_text_color(71, 85, 105)
-            pdf.multi_cell(d_box_w - 4, 2.7, _clean_str(dec.get("detalle", "")), align="C")
+            pdf.multi_cell(d_box_w - 4, 2.5, _clean_str(dec.get("detalle", "")), align="C")
 
-        pdf.set_y(d_box_y + d_box_h + 5)
+        pdf.set_y(d_box_y + d_box_h + 3)
 
-        # 6.3 Impacto de Evento Climático (ENSO / Ciclones)
-        imp = rain_analysis.get("impacto_evento", {})
-        pdf.set_fill_color(240, 253, 244)
-        pdf.set_draw_color(187, 247, 208)
-        pdf.set_line_width(0.3)
-        imp_y = pdf.get_y()
-        pdf.rect(15, imp_y, 180, 22, "DF")
-
-        pdf.set_xy(18, imp_y + 2)
-        pdf.set_font("Helvetica", "B", 7.8)
-        pdf.set_text_color(21, 128, 61)
-        pdf.cell(174, 3.8, _clean_str(f"IMPACTO DEL EVENTO CLIMÁTICO OBSERVADO: {imp.get('titulo', 'ENSO')}"), ln=True)
-
-        pdf.set_xy(18, imp_y + 6.8)
-        pdf.set_font("Helvetica", "", 7.2)
-        pdf.set_text_color(51, 65, 85)
-        pdf.multi_cell(174, 3.4, _clean_str(imp.get("descripcion", "")))
-
-        # 6.4 Conclusiones del Modelo para el Cultivo de Maíz Blanco
-        pdf.set_y(imp_y + 26)
+        # 6.3 Conclusiones Pluviométricas del Mes
+        conc_y = pdf.get_y()
         conc_bg = (254, 242, 242) if sem_color == "Rojo" else (248, 250, 252)
         conc_border = (254, 202, 202) if sem_color == "Rojo" else (226, 232, 240)
         conc_text = (185, 28, 28) if sem_color == "Rojo" else (27, 77, 62)
 
         pdf.set_fill_color(*conc_bg)
         pdf.set_draw_color(*conc_border)
-        conc_y = pdf.get_y()
-        pdf.rect(15, conc_y, 180, 32, "DF")
+        pdf.set_line_width(0.3)
+        pdf.rect(15, conc_y, 180, 22, "DF")
 
-        pdf.set_xy(18, conc_y + 2.5)
-        pdf.set_font("Helvetica", "B", 8)
+        pdf.set_xy(18, conc_y + 2)
+        pdf.set_font("Helvetica", "B", 7.5)
         pdf.set_text_color(*conc_text)
-        pdf.cell(174, 4, _clean_str("CONCLUSIONES Y DICTAMEN DEL MODELO PARA EL CICLO DE MAÍZ BLANCO:"), ln=True)
+        pdf.cell(174, 3.5, _clean_str("DIAGNÓSTICO PLUVIOMÉTRICO MENSUAL:"), ln=True)
 
-        pdf.set_xy(18, conc_y + 7.5)
-        pdf.set_font("Helvetica", "", 7.3)
+        pdf.set_xy(18, conc_y + 6)
+        pdf.set_font("Helvetica", "", 6.8)
         pdf.set_text_color(30, 41, 59)
-        pdf.multi_cell(174, 3.6, _clean_str(rain_analysis.get("conclusiones_modelo", "")))
+        pdf.multi_cell(174, 3.0, _clean_str(rain_analysis.get("conclusiones_modelo", "")))
+
+        # ---------------------------------------------------------
+        # SECCIÓN 7: ANÁLISIS FENOLÓGICO DE RACHAS HÍDRICAS (120 DÍAS)
+        # DICTAMEN DE GERMINACIÓN, VEGETATIVO, FLORACIÓN Y LLENADO
+        # ---------------------------------------------------------
+        rachas_sec = report_data.get("analisis_rachas", {})
+        pdf.set_y(conc_y + 26)
+        pdf.set_font("Helvetica", "B", 9.5)
+        pdf.set_text_color(27, 77, 62)
+        pdf.cell(0, 4.8, "7. EVALUACIÓN DE RACHAS HÍDRICAS POR ETAPA FENOLÓGICA (120 DÍAS)", ln=True)
+
+        pdf.set_font("Helvetica", "I", 7.2)
+        pdf.set_text_color(100, 116, 139)
+        pdf.cell(0, 3.5, _clean_str("Comportamiento diario de días seguidos de lluvia vs sequía en Calderas, San José Acatempa"), ln=True)
+
+        # Banner de veredicto de rachas
+        verd = rachas_sec.get("veredicto_general", "APTO PARA SIEMBRA")
+        if verd == "APTO PARA SIEMBRA":
+            v_bg, v_border, v_txt = (236, 253, 245), (167, 243, 208), (6, 95, 70)
+        elif verd == "SIEMBRA CON PRECAUCIÓN":
+            v_bg, v_border, v_txt = (254, 252, 232), (254, 240, 138), (146, 64, 14)
+        else:
+            v_bg, v_border, v_txt = (254, 242, 242), (254, 202, 202), (185, 28, 28)
+
+        v_y = pdf.get_y() + 1
+        pdf.set_fill_color(*v_bg)
+        pdf.set_draw_color(*v_border)
+        pdf.rect(15, v_y, 180, 10, "DF")
+
+        pdf.set_xy(18, v_y + 2)
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.set_text_color(*v_txt)
+        can_info = rachas_sec.get("canicula", {})
+        can_txt = f"Canícula: {can_info.get('severidad', 'Ninguna')} ({can_info.get('dias_duracion', 0)} días)" if can_info.get("detectada") else "Canícula: No severa"
+        dist_txt = f"Distribución: {rachas_sec.get('calidad_distribucion', 'Regular')}"
+        pdf.cell(90, 5.5, _clean_str(f"DICTAMEN FENOLÓGICO: {verd}"), ln=False)
+        pdf.set_font("Helvetica", "", 7.2)
+        pdf.cell(45, 5.5, _clean_str(dist_txt), ln=False, align="C")
+        pdf.cell(40, 5.5, _clean_str(can_txt), ln=True, align="R")
+
+        # Tabla de las 4 etapas fenológicas
+        pdf.set_y(v_y + 12)
+        pdf.set_fill_color(241, 245, 249)
+        pdf.set_draw_color(203, 213, 225)
+        pdf.set_font("Helvetica", "B", 7.0)
+        pdf.set_text_color(30, 41, 59)
+        # Anchos: 48 + 18 + 24 + 28 + 28 + 34 = 180 mm exactos
+        pdf.cell(48, 4.4, _clean_str("  Etapa Fenológica del Maíz"), border=1, fill=True)
+        pdf.cell(18, 4.4, _clean_str("Ventana"), border=1, fill=True, align="C")
+        pdf.cell(24, 4.4, _clean_str("Lluvia Total"), border=1, fill=True, align="C")
+        pdf.cell(28, 4.4, _clean_str("Racha Seca Max"), border=1, fill=True, align="C")
+        pdf.cell(28, 4.4, _clean_str("Racha Lluvia Max"), border=1, fill=True, align="C")
+        pdf.cell(34, 4.4, _clean_str("Riesgo / Diagnóstico  "), border=1, fill=True, ln=True, align="C")
+
+        pdf.set_font("Helvetica", "", 6.8)
+        for stg in rachas_sec.get("tabla_etapas", []):
+            stg_name = stg.get("etapa", "")
+            dias_str = stg.get("dias", "")
+            lluv_str = stg.get("lluvia_total", "")
+            dry_str = stg.get("racha_seca_max", "")
+            wet_str = stg.get("racha_humeda_max", "")
+            risk_str = f"{stg.get('nivel_riesgo', '')} - {stg.get('adecuacion', '')}"
+
+            if "Crítico" in stg.get("nivel_riesgo", "") or "Alto" in stg.get("nivel_riesgo", ""):
+                pdf.set_text_color(185, 28, 28)
+            elif "Moderado" in stg.get("nivel_riesgo", ""):
+                pdf.set_text_color(146, 64, 14)
+            else:
+                pdf.set_text_color(15, 23, 42)
+
+            pdf.cell(48, 4.2, _clean_str(f"  {stg_name}"), border=1)
+            pdf.set_text_color(15, 23, 42)
+            pdf.cell(18, 4.2, _clean_str(dias_str), border=1, align="C")
+            pdf.cell(24, 4.2, _clean_str(lluv_str), border=1, align="C")
+            pdf.cell(28, 4.2, _clean_str(dry_str), border=1, align="C")
+            pdf.cell(28, 4.2, _clean_str(wet_str), border=1, align="C")
+
+            if "Crítico" in stg.get("nivel_riesgo", "") or "Alto" in stg.get("nivel_riesgo", ""):
+                pdf.set_text_color(185, 28, 28)
+            else:
+                pdf.set_text_color(6, 95, 70)
+            pdf.cell(34, 4.2, _clean_str(f"{risk_str}  "), border=1, ln=True, align="C")
+
+        # Alertas críticas de rachas si existen
+        alerts = rachas_sec.get("alertas_criticas", [])
+        if alerts:
+            al_y = pdf.get_y() + 2
+            pdf.set_fill_color(254, 242, 242)
+            pdf.set_draw_color(254, 202, 202)
+            pdf.rect(15, al_y, 180, 14, "DF")
+            pdf.set_xy(18, al_y + 1.5)
+            pdf.set_font("Helvetica", "B", 7.2)
+            pdf.set_text_color(185, 28, 28)
+            pdf.cell(174, 3.2, _clean_str("ALERTA CRÍTICA FENOLÓGICA:"), ln=True)
+            pdf.set_xy(18, al_y + 5.2)
+            pdf.set_font("Helvetica", "", 6.6)
+            pdf.multi_cell(174, 2.8, _clean_str("; ".join(alerts[:2])))
 
         # ---------------------------------------------------------
         # PÁGINA 3: ANEXOS TÉCNICOS Y GRÁFICOS
@@ -521,7 +639,7 @@ def export_pdf_report(
             pdf.set_y(24)
             pdf.set_font("Helvetica", "B", 9.5)
             pdf.set_text_color(27, 77, 62)
-            pdf.cell(0, 5, "7. ANEXOS TÉCNICOS: BALANCE HÍDRICO Y PLANO GEOMÉTRICO", ln=True)
+            pdf.cell(0, 5, "8. ANEXOS TÉCNICOS: BALANCE HÍDRICO Y PLANO GEOMÉTRICO", ln=True)
 
             wb_path = chart_paths.get("water_balance")
             ter_path = chart_paths.get("terrain")
@@ -542,27 +660,52 @@ def export_pdf_report(
                 pdf.set_text_color(71, 85, 105)
                 pdf.cell(180, 4, "Gráfico 2: Plano a escala del predio con orientación cardinal y trazado sugerido de surcos.", align="C", ln=True)
 
-            # Sello de Validez y Responsabilidad Técnica
+            # Sello de Validez, Responsabilidad Técnica y Deslinde Legal
             pdf.set_y(217)
-            pdf.set_fill_color(248, 250, 252)
-            pdf.set_draw_color(226, 232, 240)
-            pdf.set_line_width(0.3)
-            pdf.rect(15, 217, 180, 24, "DF")
+            pdf.set_fill_color(255, 251, 235)  # Fondo ámbar suave para enfatizar importancia
+            pdf.set_draw_color(251, 191, 36)
+            pdf.set_line_width(0.5)
+            pdf.rect(15, 217, 180, 56, "DF")
 
             pdf.set_xy(18, 219)
-            pdf.set_font("Helvetica", "B", 7.8)
-            pdf.set_text_color(27, 77, 62)
-            pdf.cell(174, 4, "METODOLOGÍA CIENTÍFICA Y RESPONSABILIDAD TÉCNICA", ln=True)
+            pdf.set_font("Helvetica", "B", 8.5)
+            pdf.set_text_color(146, 64, 14)
+            pdf.cell(174, 4.5, "AVISO LEGAL, METODOLOGÍA Y DESLINDE DE RESPONSABILIDAD", ln=True)
 
-            pdf.set_xy(18, 224)
-            pdf.set_font("Helvetica", "", 7.1)
+            pdf.set_xy(18, 225)
+            pdf.set_font("Helvetica", "B", 7.2)
+            pdf.set_text_color(27, 77, 62)
+            pdf.cell(174, 3.5, "METODOLOGÍA CIENTÍFICA:", ln=True)
+
+            pdf.set_xy(18, 229)
+            pdf.set_font("Helvetica", "", 6.8)
             pdf.set_text_color(71, 85, 105)
-            nota_cierre = (
+            nota_metodo = (
                 "Este informe integra datos de reanálisis satelital ERA5 (ECMWF, 1981-2026), índices oceánicos ENSO (NOAA PSL), "
-                "ecuaciones edafológicas Saxton & Rawls para suelo franco-arcilloso y cotizaciones del Sistema de Información de Mercados (MAGA SIMPA). "
-                "Las recomendaciones constituyen una guía técnica de apoyo agronómico y no sustituyen la inspección directa del productor en campo."
+                "ecuaciones edafológicas Saxton & Rawls para suelo franco-arcilloso, balance hídrico FAO-56, modelos de aprendizaje automático "
+                "calibrados (XGBoost/Logística) con validación cruzada temporal por años, y cotizaciones del Sistema de Precios del MAGA."
             )
-            pdf.multi_cell(174, 3.3, nota_cierre)
+            pdf.multi_cell(174, 3.0, nota_metodo)
+
+            pdf.set_xy(18, 243)
+            pdf.set_font("Helvetica", "B", 7.2)
+            pdf.set_text_color(153, 27, 27)
+            pdf.cell(174, 3.5, "DESLINDE DE RESPONSABILIDAD:", ln=True)
+
+            pdf.set_xy(18, 247)
+            pdf.set_font("Helvetica", "", 6.8)
+            pdf.set_text_color(71, 85, 105)
+            nota_legal = (
+                "ESTE DICTAMEN CONSTITUYE EXCLUSIVAMENTE UNA HERRAMIENTA DE APOYO A LA DECISIÓN AGRÍCOLA. "
+                "Las proyecciones climáticas, financieras y agronómicas presentadas son estimaciones basadas en modelos "
+                "estadísticos y datos históricos que, por su naturaleza, no pueden garantizar resultados futuros con certeza absoluta. "
+                "La decisión final de sembrar o no sembrar recae ÚNICA Y EXCLUSIVAMENTE en el agricultor, productor o usuario que "
+                "consulta este sistema. Ni el sistema, ni sus desarrolladores, ni las fuentes de datos citadas asumen responsabilidad "
+                "alguna por pérdidas económicas, daños a cultivos o cualquier consecuencia derivada de decisiones tomadas con base en "
+                "este informe. Se recomienda complementar este análisis con inspección directa del terreno, consulta con extensionistas "
+                "agrícolas del MAGA y monitoreo continuo de las condiciones meteorológicas locales."
+            )
+            pdf.multi_cell(174, 2.9, nota_legal)
 
         pdf.output(str(pdf_file))
 
@@ -639,13 +782,28 @@ def _build_markdown_summary(
         util = esc.get("Utilidad Neta (Q)", esc.get("utilidad_neta", 0))
         md.append(f"| {esc.get('Escenario', '')} | {rend} | {prod} | Q {ingr:,.2f} | Q {util:,.2f} |")
 
+    # Auditoría de Inversión y Límites Regionales
+    cap_warns = data.get("capital_warnings", [])
+    cap_mz_val = fin.get("capital_inversion_q", 0) / max(0.001, t.get("manzanas", 1.0))
+    md.extend([
+        "",
+        "---",
+        "",
+        "## 5. Auditoría de Inversión y Límites Históricos (Corredor Seco)",
+        f"- **Capital Total Ingresado:** Q {fin.get('capital_inversion_q', 0):,.2f}",
+        f"- **Inversión por Manzana:** Q {cap_mz_val:,.2f}/mz (Rango histórico regional: Q 2,000.00 a Q 25,000.00/mz)",
+        f"- **Estado de Integridad:** Verificado sin inyección de datos.",
+    ])
+    if cap_warns:
+        md.append(f"- **⚠️ Advertencia Financiera:** {cap_warns[0]}")
+
     rain_analysis = data.get("analisis_pluviometrico")
     if rain_analysis:
         md.extend([
             "",
             "---",
             "",
-            f"## 5. Análisis Pluviométrico: {rain_analysis.get('pregunta_titulo', 'Déficit o Aumento de Lluvias')}",
+            f"## 6. Análisis Pluviométrico: {rain_analysis.get('pregunta_titulo', 'Déficit o Aumento de Lluvias')}",
             f"- **Diagnóstico General:** {rain_analysis.get('diagnostico_badge', 'Aumento de Lluvias')}",
             "",
             "### Régimen Pluviométrico Comparativo:",
@@ -672,6 +830,61 @@ def _build_markdown_summary(
             "### Conclusiones del Modelo para el Ciclo de Maíz Blanco:",
             rain_analysis.get("conclusiones_modelo", "")
         ])
+
+    rachas = data.get("analisis_rachas")
+    if rachas:
+        can_i = rachas.get("canicula", {})
+        can_str = f"Detectada ({can_i.get('severidad', '')}, {can_i.get('dias_duracion', 0)} días)" if can_i.get("detectada") else "No severa"
+        md.extend([
+            "",
+            "---",
+            "",
+            "## 7. Evaluación de Rachas Hídricas por Etapa Fenológica (120 Días)",
+            f"- **Veredicto Fenológico:** {rachas.get('veredicto_general', 'N/D')}",
+            f"- **Puntaje de Riesgo:** {rachas.get('puntaje_riesgo_pct', 'N/D')} | **Distribución:** {rachas.get('calidad_distribucion', 'N/D')} | **Canícula:** {can_str}",
+            "",
+            "| Etapa Fenológica | Ventana | Lluvia Total | Racha Seca Max | Racha Lluvia Max | Diagnóstico / Riesgo |",
+            "| :--- | :---: | :---: | :---: | :---: | :--- |",
+        ])
+        for stg in rachas.get("tabla_etapas", []):
+            md.append(f"| {stg.get('etapa', '')} | {stg.get('dias', '')} | {stg.get('lluvia_total', '')} | {stg.get('racha_seca_max', '')} | {stg.get('racha_humeda_max', '')} | {stg.get('nivel_riesgo', '')} - {stg.get('adecuacion', '')} |")
+
+        if rachas.get("alertas_criticas"):
+            md.extend([
+                "",
+                "### ⚠️ Alertas Críticas Fenológicas:",
+            ])
+            for al in rachas.get("alertas_criticas", []):
+                md.append(f"- **{al}**")
+
+        md.extend([
+            "",
+            "### Directiva Agronómica:",
+            rachas.get("directiva_agronomica", "")
+        ])
+
+    # Sección de Deslinde de Responsabilidad (OBLIGATORIA)
+    md.extend([
+        "",
+        "---",
+        "",
+        "## AVISO LEGAL, METODOLOGÍA Y DESLINDE DE RESPONSABILIDAD",
+        "",
+        "### Metodología Científica:",
+        "Este informe integra datos de reanálisis satelital ERA5 (ECMWF, 1981-2026), índices oceánicos ENSO (NOAA PSL), "
+        "ecuaciones edafológicas Saxton & Rawls para suelo franco-arcilloso, balance hídrico FAO-56, modelos de aprendizaje automático "
+        "calibrados (XGBoost/Logística) con validación cruzada temporal por años, y cotizaciones del Sistema de Precios del MAGA.",
+        "",
+        "### ⚠️ DESLINDE DE RESPONSABILIDAD:",
+        "**ESTE DICTAMEN CONSTITUYE EXCLUSIVAMENTE UNA HERRAMIENTA DE APOYO A LA DECISIÓN AGRÍCOLA.** "
+        "Las proyecciones climáticas, financieras y agronómicas presentadas son estimaciones basadas en modelos "
+        "estadísticos y datos históricos que, por su naturaleza, no pueden garantizar resultados futuros con certeza absoluta. "
+        "**La decisión final de sembrar o no sembrar recae ÚNICA Y EXCLUSIVAMENTE en el agricultor, productor o usuario que "
+        "consulta este sistema.** Ni el sistema, ni sus desarrolladores, ni las fuentes de datos citadas asumen responsabilidad "
+        "alguna por pérdidas económicas, daños a cultivos o cualquier consecuencia derivada de decisiones tomadas con base en "
+        "este informe. Se recomienda complementar este análisis con inspección directa del terreno, consulta con extensionistas "
+        "agrícolas del MAGA y monitoreo continuo de las condiciones meteorológicas locales.",
+    ])
 
     return "\n".join(md)
 

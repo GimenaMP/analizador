@@ -14,6 +14,21 @@ from .agronomy_economics import (
     calculate_sowing_density,
     calculate_financial_projection,
 )
+from .input_validator import (
+    ValidatedInput,
+    ValidationError,
+    validate_and_sanitize,
+    sanitize_string,
+    get_validation_summary,
+)
+from .rain_streak_analyzer import (
+    StageAnalysis,
+    RainStreakReport,
+    HistoricalStreakSummary,
+    analyze_rain_streaks,
+    analyze_historical_streaks,
+    generate_streak_pdf_section,
+)
 
 __all__ = [
     "fetch_weather",
@@ -32,4 +47,16 @@ __all__ = [
     "TerrainModel",
     "calculate_sowing_density",
     "calculate_financial_projection",
+    "ValidatedInput",
+    "ValidationError",
+    "validate_and_sanitize",
+    "sanitize_string",
+    "get_validation_summary",
+    "StageAnalysis",
+    "RainStreakReport",
+    "HistoricalStreakSummary",
+    "analyze_rain_streaks",
+    "analyze_historical_streaks",
+    "generate_streak_pdf_section",
 ]
+

@@ -989,6 +989,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Exponer para pruebas y acceso programático seguro
   window.renderResults = renderResults;
   window.downloadReportPDF = downloadReportPDF;
+  window.buildCleanPdfHtml = buildCleanPdfHtml;
 
   /**
    * Construye el documento HTML ejecutivo de 3 páginas exactas para el Dictamen Agronómico Oficial.
@@ -1069,10 +1070,10 @@ document.addEventListener('DOMContentLoaded', () => {
     ` : '';
 
     return `
-      <div class="pdf-document" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #FFFFFF; color: #0F172A; width: 760px; margin: 0 auto; line-height: 1.35; font-size: 13px;">
+      <div class="pdf-document" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #FFFFFF; color: #0F172A; width: 800px; margin: 0 auto; line-height: 1.35; font-size: 13px;">
         
         <!-- PÁGINA 1 -->
-        <div class="pdf-page" style="page-break-after: always; break-after: page; height: 980px; max-height: 980px; padding: 24px 28px; box-sizing: border-box; position: relative; overflow: hidden;">
+        <div class="pdf-page" style="page-break-after: always; break-after: page; height: 1025px; box-sizing: border-box; position: relative; padding: 28px 32px;">
           
           <!-- Encabezado Institucional -->
           <div style="border-bottom: 2px solid #0284C7; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start;">
@@ -1167,7 +1168,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
 
         <!-- PÁGINA 2 -->
-        <div class="pdf-page" style="page-break-after: always; break-after: page; height: 980px; max-height: 980px; padding: 24px 28px; box-sizing: border-box; position: relative; overflow: hidden;">
+        <div class="pdf-page" style="page-break-after: always; break-after: page; height: 1025px; box-sizing: border-box; position: relative; padding: 28px 32px;">
           
           <!-- Encabezado Página 2 -->
           <div style="border-bottom: 2px solid #059669; padding-bottom: 10px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
@@ -1249,7 +1250,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
 
         <!-- PÁGINA 3 -->
-        <div class="pdf-page" style="height: 980px; max-height: 980px; padding: 24px 28px; box-sizing: border-box; position: relative; overflow: hidden;">
+        <div class="pdf-page" style="height: 1025px; box-sizing: border-box; position: relative; padding: 28px 32px;">
           
           <!-- Encabezado Página 3 -->
           <div style="border-bottom: 2px solid #D97706; padding-bottom: 10px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
@@ -1385,13 +1386,13 @@ document.addEventListener('DOMContentLoaded', () => {
     wrapper.style.position = 'absolute';
     wrapper.style.top = '-99999px';
     wrapper.style.left = '0';
-    wrapper.style.width = '760px';
+    wrapper.style.width = '800px';
     wrapper.style.overflow = 'hidden';
 
     const printContainer = document.createElement('div');
     printContainer.id = 'cleanPdfExportContainer';
     printContainer.style.position = 'relative';
-    printContainer.style.width = '760px';
+    printContainer.style.width = '800px';
     printContainer.style.background = '#FFFFFF';
     printContainer.innerHTML = buildCleanPdfHtml(data, terrainImg, waterChartImg);
 
@@ -1411,10 +1412,8 @@ document.addEventListener('DOMContentLoaded', () => {
           html2canvas: {
             scale: 2,
             useCORS: true,
-            scrollY: 0,
-            scrollX: 0,
             backgroundColor: '#FFFFFF',
-            windowWidth: 760
+            logging: false
           },
           jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
           pagebreak: { mode: ['css', 'legacy'] }

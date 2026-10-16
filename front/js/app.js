@@ -379,8 +379,22 @@ document.addEventListener('DOMContentLoaded', () => {
   const pnlTableBody = document.getElementById('pnlTableBody');
   const sensitivityTableBody = document.getElementById('sensitivityTableBody');
 
-  // Botón de Descarga PDF (RF-08)
+  // Botón de Descarga PDF (RF-08) y almacenamiento de último dictamen
   const btnDownloadPdf = document.getElementById('btnDownloadPdf');
+  let lastAnalysisData = null;
+
+  if (btnDownloadPdf) {
+    btnDownloadPdf.removeAttribute('target');
+    btnDownloadPdf.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (lastAnalysisData) {
+        downloadReportPDF(lastAnalysisData);
+      } else {
+        const workspace = document.getElementById('workspace') || document.querySelector('.form-section-clean');
+        if (workspace) workspace.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+  }
 
   // ==============================================================================
   // 3. MANEJO DE GEOMETRÍA DEL TERRENO
@@ -970,6 +984,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Exportación de Dictamen Técnico en PDF (RF-08) - 100% en cliente sin dependencia de archivos estáticos
+    lastAnalysisData = data;
     btnDownloadPdf.removeAttribute('target');
     btnDownloadPdf.href = '#';
     btnDownloadPdf.onclick = (e) => {
@@ -1353,8 +1368,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /**
    * Generador y exportador de Dictamen Técnico en PDF en el navegador.
-   * CERO PÁGINAS EN BLANCO: Construye un DOM plano dentro de un wrapper off-screen seguro,
-   * con imágenes fijas de canvas y parámetros de corte exactos reconocidos por html2pdf.
+   * CERO PÁGINAS EN BLANCO: Pasa directamente la cadena HTML a html2pdf().from(cleanHtml).
+   * Elimina wrappers en el DOM con top: -99999px que provocaban que Microsoft Edge descartara
+   * el lienzo por optimización de rasterización GPU offscreen.
    */
   async function downloadReportPDF(data) {
     if (!data) return;
@@ -1377,34 +1393,11 @@ document.addEventListener('DOMContentLoaded', () => {
       console.warn('Canvas capture fallback:', canvasErr);
     }
 
-    // 2. Construir wrapper off-screen aislado para la exportación PDF
-    // REGLA CRÍTICA: NO aplicar position: fixed ni position: absolute a cleanPdfExportContainer.
-    // Un elemento con position: fixed clonado por html2pdf colapsa su altura a 0 (h=0),
-    // generando un canvas 1632x0 y descargando una hoja en blanco.
-    const wrapper = document.createElement('div');
-    wrapper.id = 'cleanPdfWrapper';
-    wrapper.style.position = 'absolute';
-    wrapper.style.top = '-99999px';
-    wrapper.style.left = '0';
-    wrapper.style.width = '800px';
-    wrapper.style.overflow = 'hidden';
-
-    const printContainer = document.createElement('div');
-    printContainer.id = 'cleanPdfExportContainer';
-    printContainer.style.position = 'relative';
-    printContainer.style.width = '800px';
-    printContainer.style.background = '#FFFFFF';
-    printContainer.innerHTML = buildCleanPdfHtml(data, terrainImg, waterChartImg);
-
-    wrapper.appendChild(printContainer);
-    document.body.appendChild(wrapper);
-
-    // Pausa técnica para permitir el renderizado del DOM y decodificación de Data URLs
-    await new Promise(resolve => setTimeout(resolve, 200));
-
     try {
       if (typeof html2pdf !== 'undefined') {
         const dateStr = data.sowing_date || new Date().toISOString().split('T')[0];
+        const cleanHtml = buildCleanPdfHtml(data, terrainImg, waterChartImg);
+
         const opt = {
           margin: [0, 0, 0, 0],
           filename: `Dictamen_Agronomico_Calderas_${dateStr}.pdf`,
@@ -1419,7 +1412,8 @@ document.addEventListener('DOMContentLoaded', () => {
           pagebreak: { mode: ['css', 'legacy'] }
         };
 
-        await html2pdf().set(opt).from(printContainer).save();
+        // Generar y descargar pasando la plantilla HTML directamente a html2pdf
+        await html2pdf().set(opt).from(cleanHtml).save();
       } else {
         printReportDirect(data);
       }
@@ -1427,9 +1421,6 @@ document.addEventListener('DOMContentLoaded', () => {
       console.warn('html2pdf fallback to window.print():', err);
       printReportDirect(data);
     } finally {
-      if (wrapper && wrapper.parentNode) {
-        wrapper.parentNode.removeChild(wrapper);
-      }
       if (btnText) btnText.textContent = originalText;
       btnDownloadPdf.style.pointerEvents = 'auto';
       btnDownloadPdf.style.opacity = '1';

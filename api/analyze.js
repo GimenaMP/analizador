@@ -460,7 +460,7 @@ export default async function handler(req, res) {
         punto_equilibrio_qq: breakEven,
         escenarios_sensibilidad: [
           {
-            "Escenario": "Optimista: Buen régimen de lluvias",
+            "Escenario": "Optimista: Buen régimen de lluvias (+15%)",
             "Rendimiento (qq/mz)": +(65.0 * 1.15).toFixed(1),
             "Producción Total (qq)": +(65.0 * 1.15 * manzanas).toFixed(1),
             "Ingreso Bruto (Q)": +(65.0 * 1.15 * manzanas * precioMAGA).toFixed(2),
@@ -476,7 +476,7 @@ export default async function handler(req, res) {
             "ROI (%)": roi
           },
           {
-            "Escenario": "Pesimista: Déficit hídrico o canícula",
+            "Escenario": "Pesimista: Déficit hídrico o canícula (-55%)",
             "Rendimiento (qq/mz)": +(65.0 * 0.45).toFixed(1),
             "Producción Total (qq)": +(65.0 * 0.45 * manzanas).toFixed(1),
             "Ingreso Bruto (Q)": +(65.0 * 0.45 * manzanas * precioMAGA).toFixed(2),

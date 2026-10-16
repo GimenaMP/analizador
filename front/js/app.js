@@ -861,9 +861,36 @@ document.addEventListener('DOMContentLoaded', () => {
       pnlTableBody.appendChild(tr);
     });
 
-    // Análisis de sensibilidad de escenarios
+    // Análisis de sensibilidad de escenarios (Calculados dinámicamente)
     sensitivityTableBody.innerHTML = '';
-    f.escenarios_sensibilidad.forEach(esc => {
+    const escList = (f.escenarios_sensibilidad && f.escenarios_sensibilidad.length > 0) ? f.escenarios_sensibilidad : [
+      {
+        "Escenario": "Optimista: Buen régimen de lluvias (+15%)",
+        "Rendimiento (qq/mz)": +(65.0 * 1.15).toFixed(1),
+        "Producción Total (qq)": +(65.0 * 1.15 * mzVal).toFixed(1),
+        "Ingreso Bruto (Q)": +(65.0 * 1.15 * mzVal * precMaga).toFixed(2),
+        "Utilidad Neta (Q)": +((65.0 * 1.15 * mzVal * precMaga) - capInv).toFixed(2),
+        "ROI (%)": capInv > 0 ? +((((65.0 * 1.15 * mzVal * precMaga) - capInv) / capInv) * 100).toFixed(1) : 0
+      },
+      {
+        "Escenario": "Proyectado: Modelo agroclimático",
+        "Rendimiento (qq/mz)": rendMz,
+        "Producción Total (qq)": prodQq,
+        "Ingreso Bruto (Q)": ingBruto,
+        "Utilidad Neta (Q)": utNeta,
+        "ROI (%)": roiVal
+      },
+      {
+        "Escenario": "Pesimista: Déficit hídrico o canícula (-55%)",
+        "Rendimiento (qq/mz)": +(65.0 * 0.45).toFixed(1),
+        "Producción Total (qq)": +(65.0 * 0.45 * mzVal).toFixed(1),
+        "Ingreso Bruto (Q)": +(65.0 * 0.45 * mzVal * precMaga).toFixed(2),
+        "Utilidad Neta (Q)": +((65.0 * 0.45 * mzVal * precMaga) - capInv).toFixed(2),
+        "ROI (%)": capInv > 0 ? +((((65.0 * 0.45 * mzVal * precMaga) - capInv) / capInv) * 100).toFixed(1) : 0
+      }
+    ];
+
+    escList.forEach(esc => {
       const tr = document.createElement('tr');
       const cleanEscName = (esc.Escenario || '')
         .replace(/[()]/g, '')
@@ -1025,24 +1052,76 @@ document.addEventListener('DOMContentLoaded', () => {
     const f = d.financiero || {};
     const streak = d.rain_streak_report || {};
     const can = streak.canicula || {};
-    const plu = d.analisis_pluviometrico || {};
     const colorLower = (d.semaforo_color || 'Amarillo').toLowerCase();
 
     const bannerBg = colorLower === 'verde' ? '#ECFDF5' : colorLower === 'rojo' ? '#FEF2F2' : '#FEFCE8';
     const bannerBorder = colorLower === 'verde' ? '#059669' : colorLower === 'rojo' ? '#DC2626' : '#D97706';
     const bannerTextColor = colorLower === 'verde' ? '#065F46' : colorLower === 'rojo' ? '#991B1B' : '#92400E';
 
-    const probPct = ((d.probabilidad || 0.5) * 100).toFixed(1);
+    const probVal = Number(d.probabilidad || 0.5);
+    const probPct = (probVal * 100).toFixed(1);
     const dateFormatted = d.sowing_date || new Date().toISOString().split('T')[0];
     const todayStr = new Date().toLocaleDateString('es-GT', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-    // Filas para las 4 etapas fenológicas
-    const stages = streak.tabla_etapas && streak.tabla_etapas.length > 0 ? streak.tabla_etapas : [
-      { etapa: "Germinación y Emergencia", dias: "Días 1-15", lluvia_total: "35.0 mm", racha_seca_max: "2 días", racha_humeda_max: "1 días", adecuacion: "Adecuado", nivel_riesgo: "Bajo" },
-      { etapa: "Desarrollo Vegetativo", dias: "Días 16-55", lluvia_total: "195.0 mm", racha_seca_max: "4 días", racha_humeda_max: "2 días", adecuacion: "Adecuado", nivel_riesgo: "Bajo" },
-      { etapa: "Floración y Polinización", dias: "Días 56-75", lluvia_total: "90.0 mm", racha_seca_max: "3 días", racha_humeda_max: "1 días", adecuacion: "Adecuado", nivel_riesgo: "Bajo" },
-      { etapa: "Llenado de Grano", dias: "Días 76-120", lluvia_total: "160.0 mm", racha_seca_max: "4 días", racha_humeda_max: "1 días", adecuacion: "Adecuado", nivel_riesgo: "Bajo" }
-    ];
+    // Variables base calculadas directamente de las entradas del usuario
+    const userMz = Number(terr.manzanas || 1.0);
+    const userCap = Number(f.capital_inversion_q || 7200);
+    const magaPrice = Number(f.precio_maga_qq || (liveMagaData.precio || 235.0));
+
+    // Rendimiento proyectado oficial (RF-07)
+    const factorRend = 0.40 + 0.60 * probVal;
+    const projYield = Number(f.rendimiento_estimado_qq_mz || +(65.0 * factorRend).toFixed(1));
+    const projProd = Number(f.produccion_total_estimada_qq || +(projYield * userMz).toFixed(1));
+    const projIng = Number(f.ingreso_bruto_q || +(projProd * magaPrice).toFixed(2));
+    const projUt = Number(f.utilidad_neta_q || +(projIng - userCap).toFixed(2));
+    const projRoi = Number(f.roi_pct || +(userCap > 0 ? ((projUt / userCap) * 100).toFixed(1) : 0));
+    const breakEven = Number(f.punto_equilibrio_qq || +(magaPrice > 0 ? (userCap / magaPrice).toFixed(1) : 0));
+
+    // Densidad y requerimiento de semilla calculados directamente para el predio
+    const dM2 = Number(dens.densidad_plantas_m2 || (colorLower === 'verde' ? 5.8 : colorLower === 'rojo' ? 3.6 : 4.4));
+    const dMz = Number(dens.densidad_plantas_mz || Math.round(dM2 * 7000));
+    const totPlants = Number(dens.plantas_totales_predio || Math.round(dM2 * (terr.area_m2 || userMz * 7000)));
+    const totSeeds = Number(dens.semillas_totales_requeridas || Math.round(totPlants * 1.235));
+    const bags = dens.bolsas_comerciales || (totSeeds / 60000).toFixed(2);
+    const lbs = dens.libras_semilla || (totSeeds / 1400).toFixed(1);
+    const rowDist = dens.distancia_surcos_cm || (colorLower === 'verde' ? 80 : colorLower === 'rojo' ? 90 : 85);
+    const plantDist = dens.distancia_posturas_cm || (colorLower === 'verde' ? 22 : colorLower === 'rojo' ? 31 : 27);
+
+    // Análisis pluviométrico del mes de siembra (dinámico)
+    const plu = (d.analisis_pluviometrico && d.analisis_pluviometrico.distribucion_decenas)
+      ? d.analisis_pluviometrico
+      : computeMonthlyRainfallAnalysis(dateFormatted, d.fase_enso || 'Neutral');
+
+    // Filas para las 4 etapas fenológicas (100% calculadas, sin números fijos)
+    let stages = streak.tabla_etapas;
+    if (!stages || stages.length === 0) {
+      if (d.timeline && d.timeline.precipDaily && d.timeline.precipDaily.length > 0) {
+        const p120 = d.timeline.precipDaily;
+        const s1 = p120.slice(0, 15);
+        const s2 = p120.slice(15, 55);
+        const s3 = p120.slice(55, 75);
+        const s4 = p120.slice(75, 120);
+        const sum = arr => arr.reduce((x, y) => x + y, 0);
+        const maxStreak = (arr, cond) => {
+          let maxL = 0, cur = 0;
+          for (const v of arr) { if (cond(v)) { cur++; if (cur > maxL) maxL = cur; } else cur = 0; }
+          return maxL;
+        };
+        const s1R = sum(s1), s2R = sum(s2), s3R = sum(s3), s4R = sum(s4);
+        const s1D = maxStreak(s1, v => v < 1.0), s1W = maxStreak(s1, v => v > 15.0);
+        const s2D = maxStreak(s2, v => v < 1.5), s2W = maxStreak(s2, v => v > 20.0);
+        const s3D = maxStreak(s3, v => v < 2.0), s3W = maxStreak(s3, v => v > 25.0);
+        const s4D = maxStreak(s4, v => v < 1.5), s4W = maxStreak(s4, v => v > 15.0);
+        stages = [
+          { etapa: "Germinación y Emergencia", dias: "Días 1-15", lluvia_total: `${s1R.toFixed(1)} mm`, racha_seca_max: `${s1D} días`, racha_humeda_max: `${s1W} días`, adecuacion: s1R < 20 ? "Déficit Severo" : s1R > 80 ? "Exceso Moderado" : "Adecuado", nivel_riesgo: (s1D > 7 || s1W > 5) ? "Crítico" : s1R < 20 ? "Alto" : "Bajo" },
+          { etapa: "Desarrollo Vegetativo", dias: "Días 16-55", lluvia_total: `${s2R.toFixed(1)} mm`, racha_seca_max: `${s2D} días`, racha_humeda_max: `${s2W} días`, adecuacion: s2R < 150 ? "Déficit Moderado" : "Adecuado", nivel_riesgo: s2D > 10 ? "Crítico" : s2D >= 5 ? "Moderado" : "Bajo" },
+          { etapa: "Floración y Polinización", dias: "Días 56-75", lluvia_total: `${s3R.toFixed(1)} mm`, racha_seca_max: `${s3D} días`, racha_humeda_max: `${s3W} días`, adecuacion: s3R < 60 ? "Déficit Severo" : "Adecuado", nivel_riesgo: s3D > 4 ? "Crítico" : "Bajo" },
+          { etapa: "Llenado de Grano", dias: "Días 76-120", lluvia_total: `${s4R.toFixed(1)} mm`, racha_seca_max: `${s4D} días`, racha_humeda_max: `${s4W} días`, adecuacion: s4R < 100 ? "Déficit Moderado" : "Adecuado", nivel_riesgo: s4R < 80 ? "Moderado" : "Bajo" }
+        ];
+      } else {
+        stages = [];
+      }
+    }
 
     const stageRowsHtml = stages.map(stg => {
       const isCritical = (stg.nivel_riesgo || '').includes('Crítico') || (stg.nivel_riesgo || '').includes('Alto');
@@ -1059,11 +1138,44 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     }).join('');
 
-    // Escenarios de sensibilidad financiera
-    const scenarios = f.escenarios_sensibilidad && f.escenarios_sensibilidad.length > 0 ? f.escenarios_sensibilidad : [
-      { "Escenario": "Optimista: Buen régimen de lluvias", "Rendimiento (qq/mz)": 74.8, "Producción Total (qq)": 30.7, "Ingreso Bruto (Q)": 7214.50, "Utilidad Neta (Q)": -7785.50, "ROI (%)": -51.9 },
-      { "Escenario": "Proyectado: Modelo agroclimático", "Rendimiento (qq/mz)": f.rendimiento_estimado_qq_mz || 33.2, "Producción Total (qq)": f.produccion_total_estimada_qq || 13.6, "Ingreso Bruto (Q)": f.ingreso_bruto_q || 3196.0, "Utilidad Neta (Q)": f.utilidad_neta_q || -11804.0, "ROI (%)": f.roi_pct || -78.7 },
-      { "Escenario": "Pesimista: Déficit hídrico o canícula", "Rendimiento (qq/mz)": 29.3, "Producción Total (qq)": 12.0, "Ingreso Bruto (Q)": 2820.00, "Utilidad Neta (Q)": -12180.00, "ROI (%)": -81.2 }
+    // Escenarios de sensibilidad financiera calculados estrictamente a partir de los datos ingresados
+    const optYield = +(65.0 * 1.15).toFixed(1);
+    const optProd = +(optYield * userMz).toFixed(1);
+    const optIng = +(optProd * magaPrice).toFixed(2);
+    const optUt = +(optIng - userCap).toFixed(2);
+    const optRoi = userCap > 0 ? +(((optUt) / userCap) * 100).toFixed(1) : 0;
+
+    const pesYield = +(65.0 * 0.45).toFixed(1);
+    const pesProd = +(pesYield * userMz).toFixed(1);
+    const pesIng = +(pesProd * magaPrice).toFixed(2);
+    const pesUt = +(pesIng - userCap).toFixed(2);
+    const pesRoi = userCap > 0 ? +(((pesUt) / userCap) * 100).toFixed(1) : 0;
+
+    const scenarios = (f.escenarios_sensibilidad && f.escenarios_sensibilidad.length > 0) ? f.escenarios_sensibilidad : [
+      {
+        "Escenario": "Optimista: Buen régimen de lluvias (+15%)",
+        "Rendimiento (qq/mz)": optYield,
+        "Producción Total (qq)": optProd,
+        "Ingreso Bruto (Q)": optIng,
+        "Utilidad Neta (Q)": optUt,
+        "ROI (%)": optRoi
+      },
+      {
+        "Escenario": "Proyectado: Modelo agroclimático",
+        "Rendimiento (qq/mz)": projYield,
+        "Producción Total (qq)": projProd,
+        "Ingreso Bruto (Q)": projIng,
+        "Utilidad Neta (Q)": projUt,
+        "ROI (%)": projRoi
+      },
+      {
+        "Escenario": "Pesimista: Déficit hídrico o canícula (-55%)",
+        "Rendimiento (qq/mz)": pesYield,
+        "Producción Total (qq)": pesProd,
+        "Ingreso Bruto (Q)": pesIng,
+        "Utilidad Neta (Q)": pesUt,
+        "ROI (%)": pesRoi
+      }
     ];
 
     const scenarioRowsHtml = scenarios.map(sc => `
@@ -1161,22 +1273,22 @@ document.addEventListener('DOMContentLoaded', () => {
             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center;">
               <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px;">
                 <div style="font-size: 0.68rem; color: #64748B; text-transform: uppercase;">Densidad Óptima</div>
-                <div style="font-size: 1.0rem; font-weight: 800; color: #0F172A; margin: 2px 0;">${dens.densidad_plantas_m2 || 3.6} pl/m²</div>
-                <div style="font-size: 0.70rem; color: #64748B;">${(dens.densidad_plantas_mz || 25200).toLocaleString()} plantas/mz</div>
+                <div style="font-size: 1.0rem; font-weight: 800; color: #0F172A; margin: 2px 0;">${dM2} pl/m²</div>
+                <div style="font-size: 0.70rem; color: #64748B;">${dMz.toLocaleString()} plantas/mz</div>
               </div>
               <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px;">
                 <div style="font-size: 0.68rem; color: #64748B; text-transform: uppercase;">Población Predio</div>
-                <div style="font-size: 1.0rem; font-weight: 800; color: #0F172A; margin: 2px 0;">${(dens.plantas_totales_predio || 0).toLocaleString()}</div>
+                <div style="font-size: 1.0rem; font-weight: 800; color: #0F172A; margin: 2px 0;">${totPlants.toLocaleString()}</div>
                 <div style="font-size: 0.70rem; color: #64748B;">Plantas esperadas</div>
               </div>
               <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px;">
                 <div style="font-size: 0.68rem; color: #64748B; text-transform: uppercase;">Semilla a Comprar</div>
-                <div style="font-size: 1.0rem; font-weight: 800; color: #0284C7; margin: 2px 0;">${(dens.semillas_totales_requeridas || 0).toLocaleString()}</div>
-                <div style="font-size: 0.70rem; color: #64748B;">${dens.bolsas_comerciales || 0} bolsas (${dens.libras_semilla || 0} lbs)</div>
+                <div style="font-size: 1.0rem; font-weight: 800; color: #0284C7; margin: 2px 0;">${totSeeds.toLocaleString()}</div>
+                <div style="font-size: 0.70rem; color: #64748B;">${bags} bolsas (${lbs} lbs)</div>
               </div>
               <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px;">
                 <div style="font-size: 0.68rem; color: #64748B; text-transform: uppercase;">Arreglo Espacial</div>
-                <div style="font-size: 0.90rem; font-weight: 800; color: #0F172A; margin: 2px 0;">${dens.distancia_surcos_cm || 90} × ${dens.distancia_posturas_cm || 31} cm</div>
+                <div style="font-size: 0.90rem; font-weight: 800; color: #0F172A; margin: 2px 0;">${rowDist} × ${plantDist} cm</div>
                 <div style="font-size: 0.70rem; color: #64748B;">Surcos × Posturas</div>
               </div>
             </div>
@@ -1289,25 +1401,25 @@ document.addEventListener('DOMContentLoaded', () => {
           <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; text-align: center;">
             <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px;">
               <div style="font-size: 0.68rem; color: #64748B; text-transform: uppercase;">Inversión Aportada</div>
-              <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; margin: 2px 0;">Q ${(f.capital_inversion_q || 0).toLocaleString('es-GT', {minimumFractionDigits: 2})}</div>
+              <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; margin: 2px 0;">Q ${userCap.toLocaleString('es-GT', {minimumFractionDigits: 2})}</div>
               <div style="font-size: 0.68rem; color: #64748B;">Capital del productor</div>
             </div>
             <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px;">
               <div style="font-size: 0.68rem; color: #64748B; text-transform: uppercase;">Rendimiento Proy.</div>
-              <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; margin: 2px 0;">${f.rendimiento_estimado_qq_mz || 0} qq/mz</div>
-              <div style="font-size: 0.68rem; color: #64748B;">Total: ${f.produccion_total_estimada_qq || 0} quintales</div>
+              <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; margin: 2px 0;">${projYield} qq/mz</div>
+              <div style="font-size: 0.68rem; color: #64748B;">Total: ${projProd} quintales</div>
             </div>
             <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px;">
               <div style="font-size: 0.68rem; color: #64748B; text-transform: uppercase;">Ingreso Bruto</div>
-              <div style="font-size: 1.05rem; font-weight: 800; color: #0284C7; margin: 2px 0;">Q ${(f.ingreso_bruto_q || 0).toLocaleString('es-GT', {minimumFractionDigits: 2})}</div>
-              <div style="font-size: 0.68rem; color: #64748B;">A Q ${f.precio_maga_qq || 235}/qq</div>
+              <div style="font-size: 1.05rem; font-weight: 800; color: #0284C7; margin: 2px 0;">Q ${projIng.toLocaleString('es-GT', {minimumFractionDigits: 2})}</div>
+              <div style="font-size: 0.68rem; color: #64748B;">A Q ${magaPrice.toFixed(2)}/qq</div>
             </div>
             <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px;">
               <div style="font-size: 0.68rem; color: #64748B; text-transform: uppercase;">Utilidad Proyectada</div>
-              <div style="font-size: 1.05rem; font-weight: 800; color: ${(f.utilidad_neta_q || 0) >= 0 ? '#059669' : '#DC2626'}; margin: 2px 0;">
-                Q ${(f.utilidad_neta_q || 0).toLocaleString('es-GT', {minimumFractionDigits: 2})}
+              <div style="font-size: 1.05rem; font-weight: 800; color: ${projUt >= 0 ? '#059669' : '#DC2626'}; margin: 2px 0;">
+                Q ${projUt.toLocaleString('es-GT', {minimumFractionDigits: 2})}
               </div>
-              <div style="font-size: 0.68rem; font-weight: 700; color: ${(f.roi_pct || 0) >= 0 ? '#059669' : '#DC2626'};">ROI: ${f.roi_pct || 0}%</div>
+              <div style="font-size: 0.68rem; font-weight: 700; color: ${projRoi >= 0 ? '#059669' : '#DC2626'};">ROI: ${projRoi}%</div>
             </div>
           </div>
 
@@ -1339,10 +1451,10 @@ document.addEventListener('DOMContentLoaded', () => {
           <!-- Punto de Equilibrio y Datos MAGA -->
           <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; font-size: 0.75rem; color: #475569; display: flex; justify-content: space-between; align-items: center;">
             <div>
-              <strong>Punto de Equilibrio:</strong> Se requieren <strong>${f.punto_equilibrio_qq || 0} quintales</strong> de maíz blanco para cubrir la inversión aportada.
+              <strong>Punto de Equilibrio:</strong> Se requieren <strong>${breakEven} quintales</strong> de maíz blanco para cubrir la inversión aportada.
             </div>
             <div>
-              <strong>Fuente de Precio:</strong> ${f.fuente_oficial_maga || 'MAGA SIMPA'} (${f.fecha_actualizacion_maga || 'Actual'})
+              <strong>Fuente de Precio:</strong> ${f.fuente_oficial_maga || 'MAGA SIMPA (La Terminal)'} (${f.fecha_actualizacion_maga || 'Actual'})
             </div>
           </div>
 
@@ -1991,7 +2103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         punto_equilibrio_qq: breakEven,
         escenarios_sensibilidad: [
           {
-            "Escenario": "Optimista: Buen régimen de lluvias",
+            "Escenario": "Optimista: Buen régimen de lluvias (+15%)",
             "Rendimiento (qq/mz)": +(65.0 * 1.15).toFixed(1),
             "Producción Total (qq)": +(65.0 * 1.15 * mz).toFixed(1),
             "Ingreso Bruto (Q)": +(65.0 * 1.15 * mz * precioMAGA).toFixed(2),
@@ -2007,7 +2119,7 @@ document.addEventListener('DOMContentLoaded', () => {
             "ROI (%)": roi
           },
           {
-            "Escenario": "Pesimista: Déficit hídrico o canícula",
+            "Escenario": "Pesimista: Déficit hídrico o canícula (-55%)",
             "Rendimiento (qq/mz)": +(65.0 * 0.45).toFixed(1),
             "Producción Total (qq)": +(65.0 * 0.45 * mz).toFixed(1),
             "Ingreso Bruto (Q)": +(65.0 * 0.45 * mz * precioMAGA).toFixed(2),

@@ -1016,13 +1016,9 @@
               </button>
             </div>
 
-            <div class="pdf-review-view-toggles">
-              <button type="button" class="pdf-toggle-btn active" id="btnViewDocumentSheets">
-                <span>Vista Hojas (Fiel)</span>
-              </button>
-              <button type="button" class="pdf-toggle-btn" id="btnViewNativeIframe">
-                <span>Visor Nativo PDF</span>
-              </button>
+            <div class="pdf-review-badge-status">
+              <span class="status-pulse-dot"></span>
+              <span>Dictamen Oficial Listo para Descarga</span>
             </div>
           </div>
 
@@ -1044,15 +1040,10 @@
               </div>
             </div>
 
-            <!-- Escenario 1: Vista Hojas Fieles Renderizadas en Vivo -->
+            <!-- Escenario: Vista Hojas Fieles Renderizadas en Alta Resolución -->
             <div class="pdf-review-stage" id="pdfReviewStage">
               <!-- Se poblará dinámicamente con las 3 hojas del documento oficial -->
               <div id="pdfReviewDocumentSheets" style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 28px;"></div>
-            </div>
-
-            <!-- Escenario 2: Visor Nativo de PDF en Iframe (opcional conmutador) -->
-            <div id="pdfIframeWrap" style="display: none; width: 100%; height: 750px; background: #0B1120;">
-              <iframe id="pdfPreviewIframe" title="Visor Nativo PDF del Dictamen" style="width: 100%; height: 100%; border: none;"></iframe>
             </div>
 
             <!-- Barra Inferior de Acción Inmediata dentro de la Ventana -->

@@ -1439,12 +1439,12 @@ document.addEventListener('DOMContentLoaded', () => {
       console.warn('html2pdf fallback to window.print():', err);
       printReportDirect(data);
     } finally {
-      if (btnText) btnText.textContent = originalText;
+      if (btnText) btnText.textContent = 'Descargar Dictamen PDF';
       if (btnDownloadPdf) {
         btnDownloadPdf.style.pointerEvents = 'auto';
         btnDownloadPdf.style.opacity = '1';
       }
-      if (btnBottomText) btnBottomText.textContent = origBottomText;
+      if (btnBottomText) btnBottomText.textContent = 'Descargar PDF Oficial';
       if (btnBottom) {
         btnBottom.style.pointerEvents = 'auto';
         btnBottom.style.opacity = '1';
@@ -1571,51 +1571,7 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     }
 
-    // 5. Conmutador entre Vista de Hojas Fieles y Visor Nativo de PDF
-    const btnSheets = document.getElementById('btnViewDocumentSheets');
-    const btnIframe = document.getElementById('btnViewNativeIframe');
-    const iframeWrap = document.getElementById('pdfIframeWrap');
-    const previewIframe = document.getElementById('pdfPreviewIframe');
-
-    if (btnSheets && btnIframe && stage && iframeWrap) {
-      btnSheets.onclick = (e) => {
-        e.preventDefault();
-        btnSheets.classList.add('active');
-        btnIframe.classList.remove('active');
-        stage.style.display = 'flex';
-        iframeWrap.style.display = 'none';
-      };
-
-      btnIframe.onclick = async (e) => {
-        e.preventDefault();
-        btnIframe.classList.add('active');
-        btnSheets.classList.remove('active');
-        stage.style.display = 'none';
-        iframeWrap.style.display = 'block';
-
-        if (previewIframe && (!previewIframe.dataset.loaded || previewIframe.dataset.forDate !== (data.sowing_date || ''))) {
-          try {
-            if (typeof html2pdf !== 'undefined') {
-              const opt = {
-                margin: [0, 0, 0, 0],
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 1.5, useCORS: true, backgroundColor: '#FFFFFF' },
-                jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
-              };
-              const blobUrl = await html2pdf().set(opt).from(docHtml).output('bloburl');
-              previewIframe.src = blobUrl;
-              previewIframe.dataset.loaded = 'true';
-              previewIframe.dataset.forDate = data.sowing_date || '';
-            }
-          } catch (err) {
-            console.warn('Iframe native preview fallback:', err);
-            btnSheets.click();
-          }
-        }
-      };
-    }
-
-    // 6. Botones de acción directa (Descarga e Impresión)
+    // 5. Botones de acción directa (Descarga e Impresión)
     const downloadBtns = [
       document.getElementById('btnDownloadPdf'),
       document.getElementById('btnDownloadPdfBottom')

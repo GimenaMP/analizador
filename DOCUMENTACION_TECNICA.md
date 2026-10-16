@@ -51,7 +51,7 @@ flowchart TD
 
     subgraph API_Gateways["2. Capa de Servicios Web (Dual Runtime)"]
         LocalServer["Servidor Python Multihilo (server.py :8000)"]
-        VercelFunc["Serverless Functions Node.js (api/analyze.js & maga-price.js)"]
+        VercelFunc["Serverless Functions Node.js (api/analyze.js y maga-price.js)"]
     end
 
     subgraph Core_Engine["3. Motor Analítico Central (core/)"]
@@ -68,7 +68,7 @@ flowchart TD
         OpenMeteo["Open-Meteo Archive API (ERA5 Reanalysis 1981-Presente)"]
         NOAA["NOAA PSL (MEI v2 / Niño 3.4 Anomalies)"]
         MAGA["MAGA DIPLAN / SIMPA (Precios Diarios Mayoristas)"]
-        CacheDisk["Persistencia en Caché Local (.cache/*.csv)"]
+        CacheDisk["Persistencia en Caché Local (.cache/)"]
     end
 
     UI --> LocalServer
@@ -99,8 +99,8 @@ sequenceDiagram
     participant UI as Frontend SPA (front/)
     participant Server as Servidor / API REST
     participant Validator as Input Validator
-    participant Fetcher as Data Fetcher & Cache
-    participant Ext as APIs Externas (ERA5/NOAA/MAGA)
+    participant Fetcher as Ingesta y Caché Local
+    participant Ext as APIs Externas (ERA5 / NOAA / MAGA)
     participant Soil as Balance Hídrico (FAO-56)
     participant ML as Ensamble ML (XGBoost)
     participant Econ as Agronomía y Finanzas
@@ -115,23 +115,23 @@ sequenceDiagram
         Server-->>UI: Retorna mensaje de error descriptivo
     else Validación exitosa (Calderas, Jutiapa)
         Validator-->>Server: ValidatedInput
-        Server->>Fetcher: fetch_weather(lat, lon) & fetch_macro()
+        Server->>Fetcher: fetch_weather(lat, lon) y fetch_macro()
         
         alt Datos en caché local
             Fetcher-->>Server: Retorna DataFrame desde .cache/
         else Datos no existentes
-            Fetcher->>Ext: Consulta ERA5 Reanalysis & NOAA PSL
+            Fetcher->>Ext: Consulta ERA5 Reanalysis y NOAA PSL
             Ext-->>Fetcher: Series diarias continuas (1981-2026)
             Fetcher-->>Server: DataFrame enriquecido
         end
 
-        Server->>Soil: build_dataset() & simulate_window()
+        Server->>Soil: build_dataset() y simulate_window()
         Soil-->>Server: Series hídricas (s/TAW, ETa/ETc, anegamiento)
         
-        Server->>ML: train_calibrated_model() & predict_proba()
+        Server->>ML: train_calibrated_model() y predict_proba()
         ML-->>Server: Probabilidad calibrada + Semáforo (Verde/Amarillo/Rojo)
         
-        Server->>Econ: calculate_sowing_density() & calculate_financial_projection()
+        Server->>Econ: calculate_sowing_density() y calculate_financial_projection()
         Econ-->>Server: Área (m2, mz), semillas, estado P&L, ROI y punto de equilibrio
         
         Server-->>UI: Payload completo de resultados (JSON)

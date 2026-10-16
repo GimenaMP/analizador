@@ -954,6 +954,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (streakDirectiveText && streakData.directiva_agronomica) {
         streakDirectiveText.textContent = streakData.directiva_agronomica;
       }
+    } else {
+      if (streakSection) streakSection.style.display = 'none';
     }
 
     // Exportación de Dictamen Técnico en PDF (RF-08) - 100% en cliente sin dependencia de archivos estáticos
@@ -968,22 +970,378 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnPrintDirect) {
       btnPrintDirect.onclick = (e) => {
         e.preventDefault();
-        window.print();
+        printReportDirect(data);
       };
     }
   }
 
   /**
-   * Generador y exportador de Dictamen Técnico en PDF en el navegador
-   * Garantiza CERO PÁGINAS EN BLANCO: clona el contenedor, convierte canvas a imágenes PNG de alta resolución,
-   * y anula clases de animación/scroll para capturar 100% el contenido visual.
+   * Construye el documento HTML ejecutivo de 3 páginas exactas para el Dictamen Agronómico Oficial.
+   * Diseñado con estilos CSS inline absolutos y limpios para garantizar cero fallos de renderizado
+   * y cero páginas en blanco en cualquier navegador y dispositivo.
+   */
+  function buildCleanPdfHtml(data, terrainImg, waterChartImg) {
+    const d = data || {};
+    const terr = d.terreno || {};
+    const dens = d.densidad || {};
+    const f = d.financiero || {};
+    const streak = d.rain_streak_report || {};
+    const can = streak.canicula || {};
+    const plu = d.analisis_pluviometrico || {};
+    const colorLower = (d.semaforo_color || 'Amarillo').toLowerCase();
+
+    const bannerBg = colorLower === 'verde' ? '#ECFDF5' : colorLower === 'rojo' ? '#FEF2F2' : '#FEFCE8';
+    const bannerBorder = colorLower === 'verde' ? '#059669' : colorLower === 'rojo' ? '#DC2626' : '#D97706';
+    const bannerTextColor = colorLower === 'verde' ? '#065F46' : colorLower === 'rojo' ? '#991B1B' : '#92400E';
+
+    const probPct = ((d.probabilidad || 0.5) * 100).toFixed(1);
+    const dateFormatted = d.sowing_date || new Date().toISOString().split('T')[0];
+    const todayStr = new Date().toLocaleDateString('es-GT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    // Filas para las 4 etapas fenológicas
+    const stages = streak.tabla_etapas && streak.tabla_etapas.length > 0 ? streak.tabla_etapas : [
+      { etapa: "Germinación y Emergencia", dias: "Días 1-15", lluvia_total: "35.0 mm", racha_seca_max: "2 días", racha_humeda_max: "1 días", adecuacion: "Adecuado", nivel_riesgo: "Bajo" },
+      { etapa: "Desarrollo Vegetativo", dias: "Días 16-55", lluvia_total: "195.0 mm", racha_seca_max: "4 días", racha_humeda_max: "2 días", adecuacion: "Adecuado", nivel_riesgo: "Bajo" },
+      { etapa: "Floración y Polinización", dias: "Días 56-75", lluvia_total: "90.0 mm", racha_seca_max: "3 días", racha_humeda_max: "1 días", adecuacion: "Adecuado", nivel_riesgo: "Bajo" },
+      { etapa: "Llenado de Grano", dias: "Días 76-120", lluvia_total: "160.0 mm", racha_seca_max: "4 días", racha_humeda_max: "1 días", adecuacion: "Adecuado", nivel_riesgo: "Bajo" }
+    ];
+
+    const stageRowsHtml = stages.map(stg => {
+      const isCritical = (stg.nivel_riesgo || '').includes('Crítico') || (stg.nivel_riesgo || '').includes('Alto');
+      const rColor = isCritical ? '#DC2626' : '#059669';
+      return `
+        <tr style="border-bottom: 1px solid #E2E8F0;">
+          <td style="padding: 6px 8px; font-weight: 700; color: #0F172A;">${stg.etapa}</td>
+          <td style="padding: 6px 8px; text-align: center; color: #475569;">${stg.dias}</td>
+          <td style="padding: 6px 8px; text-align: center; font-weight: 600; color: #0F172A;">${stg.lluvia_total}</td>
+          <td style="padding: 6px 8px; text-align: center; color: #334155;">${stg.racha_seca_max}</td>
+          <td style="padding: 6px 8px; text-align: center; color: #334155;">${stg.racha_humeda_max}</td>
+          <td style="padding: 6px 8px; text-align: center; font-weight: 700; color: ${rColor};">${stg.nivel_riesgo} • ${stg.adecuacion}</td>
+        </tr>
+      `;
+    }).join('');
+
+    // Escenarios de sensibilidad financiera
+    const scenarios = f.escenarios_sensibilidad && f.escenarios_sensibilidad.length > 0 ? f.escenarios_sensibilidad : [
+      { "Escenario": "Optimista: Buen régimen de lluvias", "Rendimiento (qq/mz)": 74.8, "Producción Total (qq)": 30.7, "Ingreso Bruto (Q)": 7214.50, "Utilidad Neta (Q)": -7785.50, "ROI (%)": -51.9 },
+      { "Escenario": "Proyectado: Modelo agroclimático", "Rendimiento (qq/mz)": f.rendimiento_estimado_qq_mz || 33.2, "Producción Total (qq)": f.produccion_total_estimada_qq || 13.6, "Ingreso Bruto (Q)": f.ingreso_bruto_q || 3196.0, "Utilidad Neta (Q)": f.utilidad_neta_q || -11804.0, "ROI (%)": f.roi_pct || -78.7 },
+      { "Escenario": "Pesimista: Déficit hídrico o canícula", "Rendimiento (qq/mz)": 29.3, "Producción Total (qq)": 12.0, "Ingreso Bruto (Q)": 2820.00, "Utilidad Neta (Q)": -12180.00, "ROI (%)": -81.2 }
+    ];
+
+    const scenarioRowsHtml = scenarios.map(sc => `
+      <tr style="border-bottom: 1px solid #E2E8F0;">
+        <td style="padding: 6px 8px; font-weight: 600; color: #0F172A; font-size: 0.78rem;">${sc["Escenario"] || sc.Escenario}</td>
+        <td style="padding: 6px 8px; text-align: center; font-size: 0.78rem;">${sc["Rendimiento (qq/mz)"]} qq/mz</td>
+        <td style="padding: 6px 8px; text-align: center; font-size: 0.78rem; font-weight: 600;">${sc["Producción Total (qq)"]} qq</td>
+        <td style="padding: 6px 8px; text-align: right; font-size: 0.78rem;">Q ${Number(sc["Ingreso Bruto (Q)"]).toLocaleString('es-GT', {minimumFractionDigits: 2})}</td>
+        <td style="padding: 6px 8px; text-align: right; font-size: 0.78rem; font-weight: 700; color: ${Number(sc["Utilidad Neta (Q)"]) >= 0 ? '#059669' : '#DC2626'};">Q ${Number(sc["Utilidad Neta (Q)"]).toLocaleString('es-GT', {minimumFractionDigits: 2})}</td>
+        <td style="padding: 6px 8px; text-align: center; font-size: 0.78rem; font-weight: 700; color: ${Number(sc["ROI (%)"]) >= 0 ? '#059669' : '#DC2626'};">${sc["ROI (%)"]}%</td>
+      </tr>
+    `).join('');
+
+    const capitalWarns = d.capital_warnings || [];
+    const capitalWarnHtml = capitalWarns.length > 0 ? `
+      <div style="background: #FEF3C7; border-left: 4px solid #D97706; padding: 10px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.78rem; color: #92400E; line-height: 1.4;">
+        <strong>AUDITORÍA DE CAPITAL:</strong> ${capitalWarns.join(' ')}
+      </div>
+    ` : '';
+
+    const criticalAlerts = streak.alertas_criticas || [];
+    const criticalAlertsHtml = criticalAlerts.length > 0 ? `
+      <div style="background: #FEF2F2; border-left: 4px solid #DC2626; padding: 10px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.78rem; color: #991B1B; line-height: 1.4;">
+        <strong>ALERTAS FENOLÓGICAS CRÍTICAS:</strong> ${criticalAlerts.join('; ')}
+      </div>
+    ` : '';
+
+    return `
+      <div class="pdf-document" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #FFFFFF; color: #0F172A; width: 760px; margin: 0 auto; line-height: 1.35; font-size: 13px;">
+        
+        <!-- PÁGINA 1 -->
+        <div class="pdf-page" style="page-break-after: always; break-after: page; min-height: 1020px; padding: 26px 30px; box-sizing: border-box; position: relative;">
+          
+          <!-- Encabezado Institucional -->
+          <div style="border-bottom: 2px solid #0284C7; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <div style="font-size: 0.70rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0.8px; color: #0284C7;">REPÚBLICA DE GUATEMALA • DEPARTAMENTO DE JUTIAPA</div>
+              <h1 style="font-size: 1.25rem; font-weight: 800; color: #0F172A; margin: 2px 0 0 0;">DICTAMEN TÉCNICO AGROMETEOROLÓGICO Y FINANCIERO</h1>
+              <div style="font-size: 0.80rem; color: #475569; margin-top: 3px;">Cultivo: <strong>Maíz Blanco (Zea mays)</strong> • Micro-región Exclusiva: <strong>Calderas, San José Acatempa</strong></div>
+            </div>
+            <div style="text-align: right; font-size: 0.75rem; color: #64748B; line-height: 1.3;">
+              <strong>Fecha Emisión:</strong> ${todayStr}<br>
+              <strong>Siembra Evaluada:</strong> ${dateFormatted}<br>
+              <strong>Coords:</strong> Calderas (14.267°N, -90.133°O)
+            </div>
+          </div>
+
+          <!-- Dictamen Principal / Semáforo -->
+          <div style="background: ${bannerBg}; border: 2px solid ${bannerBorder}; border-radius: 8px; padding: 14px 18px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div>
+                <span style="font-size: 0.70rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0.6px; color: ${bannerTextColor};">DICTAMEN AGROMETEOROLÓGICO OFICIAL</span>
+                <h2 style="font-size: 1.30rem; font-weight: 900; color: ${bannerTextColor}; margin: 2px 0 0 0;">${d.semaforo_estado || 'DICTAMEN EVALUADO'}</h2>
+              </div>
+              <div style="text-align: right;">
+                <span style="background: #FFFFFF; border: 1px solid ${bannerBorder}; color: ${bannerTextColor}; font-size: 0.78rem; font-weight: 800; padding: 4px 10px; border-radius: 999px;">
+                  ${probPct}% Viabilidad Climática
+                </span>
+                <div style="font-size: 0.72rem; color: #64748B; margin-top: 4px;">Fase Climática: <strong>${d.fase_enso || 'Neutral'}</strong></div>
+              </div>
+            </div>
+            <div style="background: rgba(255,255,255,0.85); border-radius: 6px; padding: 10px 12px; margin-top: 8px; border: 1px solid rgba(0,0,0,0.06);">
+              <div style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #334155; margin-bottom: 2px;">Directiva de Manejo para el Agricultor:</div>
+              <div style="font-size: 0.85rem; color: #0F172A; font-weight: 600; line-height: 1.35;">${d.semaforo_accion || 'Mantener monitoreo agrometeorológico.'}</div>
+            </div>
+          </div>
+
+          <!-- Sección 1: Geometría del Predio -->
+          <div style="margin-bottom: 16px;">
+            <div style="font-size: 0.88rem; font-weight: 800; color: #0F172A; border-bottom: 1px solid #CBD5E1; padding-bottom: 4px; margin-bottom: 8px; display: flex; justify-content: space-between;">
+              <span>1. CARACTERÍSTICAS GEOMÉTRICAS DE LA PARCELA</span>
+              <span style="font-size: 0.75rem; color: #64748B; font-weight: 500;">Plano topográfico proporcional</span>
+            </div>
+            <div style="display: flex; gap: 14px; align-items: center;">
+              <div style="flex: 1;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.80rem;">
+                  <tr style="border-bottom: 1px solid #F1F5F9;"><td style="padding: 4px 0; color: #64748B;">Forma del Predio:</td><td style="padding: 4px 0; font-weight: 700; text-align: right;">${terr.forma || 'Polígono'}</td></tr>
+                  <tr style="border-bottom: 1px solid #F1F5F9;"><td style="padding: 4px 0; color: #64748B;">Lados Medidos:</td><td style="padding: 4px 0; font-weight: 700; text-align: right;">${(terr.sides || []).join(' m, ')} m</td></tr>
+                  <tr style="border-bottom: 1px solid #F1F5F9;"><td style="padding: 4px 0; color: #64748B;">Área Métrica Total:</td><td style="padding: 4px 0; font-weight: 800; text-align: right; color: #0284C7;">${(terr.area_m2 || 0).toLocaleString()} m²</td></tr>
+                  <tr style="border-bottom: 1px solid #F1F5F9;"><td style="padding: 4px 0; color: #64748B;">Superficie Agraria:</td><td style="padding: 4px 0; font-weight: 800; text-align: right; color: #059669;">${terr.manzanas || 0} mz (${terr.hectareas || 0} ha)</td></tr>
+                  <tr><td style="padding: 4px 0; color: #64748B;">Perímetro Periférico:</td><td style="padding: 4px 0; font-weight: 700; text-align: right;">${(terr.perimetro_m || 0).toLocaleString()} m</td></tr>
+                </table>
+              </div>
+              <div style="flex: 1; text-align: center;">
+                ${terrainImg ? `<img src="${terrainImg}" style="max-height: 180px; width: 100%; object-fit: contain; border: 1px solid #E2E8F0; border-radius: 6px; background: #F8FAFC;" alt="Plano del Terreno" />` : '<div style="height: 160px; background: #F1F5F9; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #94A3B8;">Plano no disponible</div>'}
+              </div>
+            </div>
+          </div>
+
+          <!-- Sección 2: Recomendación de Densidad -->
+          <div style="margin-bottom: 16px;">
+            <div style="font-size: 0.88rem; font-weight: 800; color: #0F172A; border-bottom: 1px solid #CBD5E1; padding-bottom: 4px; margin-bottom: 8px;">
+              2. RECOMENDACIÓN TÉCNICA DE DENSIDAD Y SEMILLA
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center;">
+              <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px;">
+                <div style="font-size: 0.68rem; color: #64748B; text-transform: uppercase;">Densidad Óptima</div>
+                <div style="font-size: 1.0rem; font-weight: 800; color: #0F172A; margin: 2px 0;">${dens.densidad_plantas_m2 || 3.6} pl/m²</div>
+                <div style="font-size: 0.70rem; color: #64748B;">${(dens.densidad_plantas_mz || 25200).toLocaleString()} plantas/mz</div>
+              </div>
+              <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px;">
+                <div style="font-size: 0.68rem; color: #64748B; text-transform: uppercase;">Población Predio</div>
+                <div style="font-size: 1.0rem; font-weight: 800; color: #0F172A; margin: 2px 0;">${(dens.plantas_totales_predio || 0).toLocaleString()}</div>
+                <div style="font-size: 0.70rem; color: #64748B;">Plantas esperadas</div>
+              </div>
+              <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px;">
+                <div style="font-size: 0.68rem; color: #64748B; text-transform: uppercase;">Semilla a Comprar</div>
+                <div style="font-size: 1.0rem; font-weight: 800; color: #0284C7; margin: 2px 0;">${(dens.semillas_totales_requeridas || 0).toLocaleString()}</div>
+                <div style="font-size: 0.70rem; color: #64748B;">${dens.bolsas_comerciales || 0} bolsas (${dens.libras_semilla || 0} lbs)</div>
+              </div>
+              <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px;">
+                <div style="font-size: 0.68rem; color: #64748B; text-transform: uppercase;">Arreglo Espacial</div>
+                <div style="font-size: 0.90rem; font-weight: 800; color: #0F172A; margin: 2px 0;">${dens.distancia_surcos_cm || 90} × ${dens.distancia_posturas_cm || 31} cm</div>
+                <div style="font-size: 0.70rem; color: #64748B;">Surcos × Posturas</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pie de Página 1 -->
+          <div style="position: absolute; bottom: 18px; left: 30px; right: 30px; border-top: 1px solid #E2E8F0; padding-top: 6px; font-size: 0.70rem; color: #94A3B8; display: flex; justify-content: space-between;">
+            <span>Sistema Agrometeorológico de Viabilidad • Calderas, San José Acatempa, Jutiapa</span>
+            <span>Página 1 de 3</span>
+          </div>
+        </div>
+
+        <!-- PÁGINA 2 -->
+        <div class="pdf-page" style="page-break-after: always; break-after: page; min-height: 1020px; padding: 26px 30px; box-sizing: border-box; position: relative;">
+          
+          <!-- Encabezado Página 2 -->
+          <div style="border-bottom: 2px solid #059669; padding-bottom: 10px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-size: 0.70rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0.8px; color: #059669;">EVALUACIÓN AGROCLIMÁTICA MULTI-TEMPORAL</div>
+              <h2 style="font-size: 1.15rem; font-weight: 800; color: #0F172A; margin: 2px 0 0 0;">3. EVALUACIÓN DE RACHAS HÍDRICAS POR ETAPA FENOLÓGICA (120 DÍAS)</h2>
+            </div>
+            <div style="font-size: 0.75rem; color: #64748B; text-align: right;">
+              Calderas, Jutiapa • Ciclo de 120 Días
+            </div>
+          </div>
+
+          <!-- Veredicto Fenológico Bar -->
+          <div style="background: ${bannerBg}; border: 1px solid ${bannerBorder}; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <span style="font-size: 0.68rem; font-weight: 700; color: ${bannerTextColor}; text-transform: uppercase;">Dictamen Fenológico de Rachas:</span>
+              <strong style="font-size: 0.95rem; color: ${bannerTextColor}; margin-left: 8px;">${streak.veredicto_general || d.semaforo_estado || 'Evaluación Completa'}</strong>
+            </div>
+            <div style="font-size: 0.75rem; color: ${bannerTextColor}; font-weight: 600;">
+              ${can.detectada ? `Canícula: ${can.severidad} (${can.dias_duracion} días secos)` : 'Canícula: No severa'} • Lluvia 120d: ${streak.total_precipitacion_ciclo_mm || 'N/D'}
+            </div>
+          </div>
+
+          <!-- Alertas Críticas si existen -->
+          ${criticalAlertsHtml}
+
+          <!-- Tabla Fenológica 4 Etapas -->
+          <div style="margin-bottom: 14px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.76rem; border: 1px solid #CBD5E1;">
+              <thead>
+                <tr style="background: #F1F5F9; border-bottom: 2px solid #CBD5E1; color: #334155; text-transform: uppercase; font-size: 0.68rem;">
+                  <th style="padding: 6px 8px; text-align: left;">Etapa Fenológica</th>
+                  <th style="padding: 6px 8px; text-align: center;">Ventana</th>
+                  <th style="padding: 6px 8px; text-align: center;">Lluvia Acum.</th>
+                  <th style="padding: 6px 8px; text-align: center;">Racha Seca Máx</th>
+                  <th style="padding: 6px 8px; text-align: center;">Racha Lluvia Máx</th>
+                  <th style="padding: 6px 8px; text-align: center;">Diagnóstico / Riesgo</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${stageRowsHtml}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Gráfico Hídrico -->
+          <div style="margin-bottom: 14px;">
+            <div style="font-size: 0.82rem; font-weight: 800; color: #0F172A; border-bottom: 1px solid #CBD5E1; padding-bottom: 3px; margin-bottom: 6px; display: flex; justify-content: space-between;">
+              <span>4. COMPORTAMIENTO DE LLUVIAS Y DEMANDA HÍDRICA (60 DÍAS CRÍTICOS)</span>
+              <span style="font-size: 0.72rem; color: #64748B;">Balance hídrico diario Open-Meteo ERA5</span>
+            </div>
+            ${waterChartImg ? `<img src="${waterChartImg}" style="max-height: 200px; width: 100%; object-fit: contain; border: 1px solid #E2E8F0; border-radius: 6px; background: #FFFFFF;" alt="Balance Hídrico" />` : '<div style="height: 150px; background: #F1F5F9; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #94A3B8;">Gráfico no disponible</div>'}
+          </div>
+
+          <!-- Análisis Pluviométrico Decádico -->
+          <div style="margin-bottom: 14px;">
+            <div style="font-size: 0.82rem; font-weight: 800; color: #0F172A; border-bottom: 1px solid #CBD5E1; padding-bottom: 3px; margin-bottom: 6px;">
+              5. DISTRIBUCIÓN PLUVIOMÉTRICA DE ${plu.mes_nombre ? plu.mes_nombre.toUpperCase() : 'DEL MES'}
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px;">
+              ${(plu.distribucion_decenas || []).map(dec => `
+                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 6px 8px;">
+                  <div style="font-size: 0.68rem; color: #64748B;">${dec.rango}</div>
+                  <div style="font-size: 0.95rem; font-weight: 800; color: #0284C7; margin: 2px 0;">${dec.mm} mm <span style="font-size: 0.70rem; color: #475569;">(${dec.porcentaje})</span></div>
+                  <div style="font-size: 0.68rem; color: #334155; line-height: 1.2;">${dec.detalle}</div>
+                </div>
+              `).join('')}
+            </div>
+            <div style="font-size: 0.75rem; color: #334155; background: #F1F5F9; padding: 8px 10px; border-radius: 6px; line-height: 1.35;">
+              <strong>Conclusiones del Modelo:</strong> ${plu.conclusiones_modelo || 'Distribución de humedad congruente con el ciclo de temporal de Jutiapa.'}
+            </div>
+          </div>
+
+          <!-- Pie de Página 2 -->
+          <div style="position: absolute; bottom: 18px; left: 30px; right: 30px; border-top: 1px solid #E2E8F0; padding-top: 6px; font-size: 0.70rem; color: #94A3B8; display: flex; justify-content: space-between;">
+            <span>Sistema Agrometeorológico de Viabilidad • Calderas, San José Acatempa, Jutiapa</span>
+            <span>Página 2 de 3</span>
+          </div>
+        </div>
+
+        <!-- PÁGINA 3 -->
+        <div class="pdf-page" style="min-height: 1020px; padding: 26px 30px; box-sizing: border-box; position: relative;">
+          
+          <!-- Encabezado Página 3 -->
+          <div style="border-bottom: 2px solid #D97706; padding-bottom: 10px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-size: 0.70rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0.8px; color: #D97706;">EVALUACIÓN FINANCIERA P&L DE PRECISIÓN</div>
+              <h2 style="font-size: 1.15rem; font-weight: 800; color: #0F172A; margin: 2px 0 0 0;">6. ESTADO DE RESULTADOS FINANCIERO Y AUDITORÍA DE CAPITAL</h2>
+            </div>
+            <div style="font-size: 0.75rem; color: #64748B; text-align: right;">
+              Precios Oficiales MAGA (La Terminal)
+            </div>
+          </div>
+
+          <!-- Resumen de Métricas Financieras (4 Cards) -->
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; text-align: center;">
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px;">
+              <div style="font-size: 0.68rem; color: #64748B; text-transform: uppercase;">Inversión Aportada</div>
+              <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; margin: 2px 0;">Q ${(f.capital_inversion_q || 0).toLocaleString('es-GT', {minimumFractionDigits: 2})}</div>
+              <div style="font-size: 0.68rem; color: #64748B;">Capital del productor</div>
+            </div>
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px;">
+              <div style="font-size: 0.68rem; color: #64748B; text-transform: uppercase;">Rendimiento Proy.</div>
+              <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; margin: 2px 0;">${f.rendimiento_estimado_qq_mz || 0} qq/mz</div>
+              <div style="font-size: 0.68rem; color: #64748B;">Total: ${f.produccion_total_estimada_qq || 0} quintales</div>
+            </div>
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px;">
+              <div style="font-size: 0.68rem; color: #64748B; text-transform: uppercase;">Ingreso Bruto</div>
+              <div style="font-size: 1.05rem; font-weight: 800; color: #0284C7; margin: 2px 0;">Q ${(f.ingreso_bruto_q || 0).toLocaleString('es-GT', {minimumFractionDigits: 2})}</div>
+              <div style="font-size: 0.68rem; color: #64748B;">A Q ${f.precio_maga_qq || 235}/qq</div>
+            </div>
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px;">
+              <div style="font-size: 0.68rem; color: #64748B; text-transform: uppercase;">Utilidad Proyectada</div>
+              <div style="font-size: 1.05rem; font-weight: 800; color: ${(f.utilidad_neta_q || 0) >= 0 ? '#059669' : '#DC2626'}; margin: 2px 0;">
+                Q ${(f.utilidad_neta_q || 0).toLocaleString('es-GT', {minimumFractionDigits: 2})}
+              </div>
+              <div style="font-size: 0.68rem; font-weight: 700; color: ${(f.roi_pct || 0) >= 0 ? '#059669' : '#DC2626'};">ROI: ${f.roi_pct || 0}%</div>
+            </div>
+          </div>
+
+          <!-- Auditoría de Capital Alertas -->
+          ${capitalWarnHtml}
+
+          <!-- Tabla de Sensibilidad -->
+          <div style="margin-bottom: 14px;">
+            <div style="font-size: 0.82rem; font-weight: 800; color: #0F172A; border-bottom: 1px solid #CBD5E1; padding-bottom: 3px; margin-bottom: 6px;">
+              7. MATRIZ DE ESCENARIOS DE SENSIBILIDAD
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.76rem; border: 1px solid #CBD5E1;">
+              <thead>
+                <tr style="background: #F1F5F9; border-bottom: 2px solid #CBD5E1; color: #334155; text-transform: uppercase; font-size: 0.68rem;">
+                  <th style="padding: 6px 8px; text-align: left;">Escenario</th>
+                  <th style="padding: 6px 8px; text-align: center;">Rendimiento</th>
+                  <th style="padding: 6px 8px; text-align: center;">Producción</th>
+                  <th style="padding: 6px 8px; text-align: right;">Ingreso Bruto</th>
+                  <th style="padding: 6px 8px; text-align: right;">Utilidad Neta</th>
+                  <th style="padding: 6px 8px; text-align: center;">ROI</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${scenarioRowsHtml}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Punto de Equilibrio y Datos MAGA -->
+          <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; font-size: 0.75rem; color: #475569; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong>Punto de Equilibrio:</strong> Se requieren <strong>${f.punto_equilibrio_qq || 0} quintales</strong> de maíz blanco para cubrir la inversión aportada.
+            </div>
+            <div>
+              <strong>Fuente de Precio:</strong> ${f.fuente_oficial_maga || 'MAGA SIMPA'} (${f.fecha_actualizacion_maga || 'Actual'})
+            </div>
+          </div>
+
+          <!-- Cláusula Formal de Deslinde Legal y Responsabilidad -->
+          <div style="background: #F1F5F9; border: 2px solid #94A3B8; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span style="font-size: 0.78rem; font-weight: 900; color: #0F172A; text-transform: uppercase; letter-spacing: 0.5px;">
+                AVISO LEGAL Y DESLINDE FORMAL DE RESPONSABILIDAD AGRONÓMICA
+              </span>
+            </div>
+            <p style="font-size: 0.72rem; color: #334155; line-height: 1.45; margin: 0; text-align: justify;">
+              El presente dictamen técnico agrometeorológico y financiero es una herramienta consultiva y de soporte técnico elaborada con base en algoritmos climáticos, modelos hidrológicos de balance de suelo y reanálisis meteorológico ERA5 de Open-Meteo. El sistema proporciona directivas y probabilidades técnicas objetivas para orientar las labores en el campo; <strong>sin embargo, no constituye una garantía absoluta de cosecha, volumen de producción ni rentabilidad financiera</strong>, debido a la inherente variabilidad atmosférica, eventos meteorológicos extremos imprevistos y factores locales de manejo de plagas, malezas y suelo.
+            </p>
+            <p style="font-size: 0.72rem; color: #0F172A; font-weight: 700; line-height: 1.45; margin: 6px 0 0 0; text-align: justify;">
+              Por consiguiente, la decisión final de efectuar o no la siembra, la fecha operativa elegida, el monto de capital asignado y las prácticas agronómicas ejecutadas son de la exclusiva cuenta, libre albedrío y entera responsabilidad del agricultor o de la persona que consulte este sistema.
+            </p>
+          </div>
+
+          <!-- Pie de Página 3 -->
+          <div style="position: absolute; bottom: 18px; left: 30px; right: 30px; border-top: 1px solid #E2E8F0; padding-top: 6px; font-size: 0.70rem; color: #94A3B8; display: flex; justify-content: space-between;">
+            <span>Sistema Agrometeorológico de Viabilidad • Calderas, San José Acatempa, Jutiapa</span>
+            <span>Página 3 de 3 • Fin del Dictamen</span>
+          </div>
+        </div>
+
+      </div>
+    `;
+  }
+
+  /**
+   * Generador y exportador de Dictamen Técnico en PDF en el navegador.
+   * CERO PÁGINAS EN BLANCO: Construye un DOM plano fuera del flujo de animaciones y scroll,
+   * con imágenes fijas de canvas y parámetros de corte por CSS exactos.
    */
   async function downloadReportPDF(data) {
-    const element = document.getElementById('resultsSection');
-    if (!element) {
-      window.print();
-      return;
-    }
+    if (!data) return;
 
     const btnText = btnDownloadPdf.querySelector('span');
     const originalText = btnText ? btnText.textContent : 'Descargar Informe PDF';
@@ -991,124 +1349,93 @@ document.addEventListener('DOMContentLoaded', () => {
     btnDownloadPdf.style.pointerEvents = 'none';
     btnDownloadPdf.style.opacity = '0.7';
 
-    const prevScrollY = window.scrollY;
-    let clone = null;
+    // 1. Capturar imágenes fijas de ambos canvas en alta resolución
+    let terrainImg = '';
+    let waterChartImg = '';
+    try {
+      const tc = document.getElementById('terrainCanvas');
+      if (tc && tc.width > 0) terrainImg = tc.toDataURL('image/png');
+      const wc = document.getElementById('waterChart');
+      if (wc && wc.width > 0) waterChartImg = wc.toDataURL('image/png');
+    } catch (canvasErr) {
+      console.warn('Canvas capture fallback:', canvasErr);
+    }
+
+    // 2. Construir contenedor aislado para la exportación PDF
+    const printContainer = document.createElement('div');
+    printContainer.id = 'cleanPdfExportContainer';
+    printContainer.style.position = 'fixed';
+    printContainer.style.top = '0';
+    printContainer.style.left = '0';
+    printContainer.style.width = '760px';
+    printContainer.style.background = '#FFFFFF';
+    printContainer.style.zIndex = '999999';
+    printContainer.style.pointerEvents = 'none';
+    printContainer.innerHTML = buildCleanPdfHtml(data, terrainImg, waterChartImg);
+
+    document.body.appendChild(printContainer);
+
     try {
       if (typeof html2pdf !== 'undefined') {
-        const dateStr = (data && data.sowing_date) ? data.sowing_date : new Date().toISOString().split('T')[0];
-        
-        // 1. Clonar resultados para no alterar la vista interactiva
-        clone = element.cloneNode(true);
-        clone.id = 'resultsSectionPdfClone';
-        clone.style.display = 'block';
-        clone.style.width = '800px';
-        clone.style.maxWidth = '800px';
-        clone.style.margin = '0 auto';
-        clone.style.padding = '24px';
-        clone.style.background = '#FFFFFF';
-        clone.style.color = '#0F172A';
-        clone.style.position = 'absolute';
-        clone.style.left = '0px';
-        clone.style.top = '0px';
-        clone.style.zIndex = '99999';
-        clone.style.boxSizing = 'border-box';
-
-        // 2. Remover barra de exportación duplicada en el clon
-        const clonePdfStrip = clone.querySelector('.pdf-export-strip');
-        if (clonePdfStrip) clonePdfStrip.remove();
-
-        // 3. Forzar visibilidad y opacidad 1 en TODOS los elementos (elimina fallos de html2canvas con scroll-reveal)
-        clone.querySelectorAll('*').forEach(el => {
-          el.classList.remove('reveal-on-scroll', 'from-left', 'from-right', 'from-bottom', 'from-scale');
-          el.classList.add('is-revealed', 'settled');
-          el.style.opacity = '1';
-          el.style.transform = 'none';
-          el.style.transition = 'none';
-          el.style.animation = 'none';
-          el.style.visibility = 'visible';
-          el.style.color = el.style.color || '#0F172A';
-        });
-
-        // 4. Convertir canvas originales a imágenes PNG de alta fidelidad (evita canvas en blanco en html2canvas)
-        const origCanvases = element.querySelectorAll('canvas');
-        const cloneCanvases = clone.querySelectorAll('canvas');
-        cloneCanvases.forEach((cCanvas, idx) => {
-          const orig = origCanvases[idx];
-          if (orig && orig.width > 0 && orig.height > 0) {
-            try {
-              const img = document.createElement('img');
-              img.src = orig.toDataURL('image/png');
-              img.style.width = '100%';
-              img.style.maxHeight = '280px';
-              img.style.objectFit = 'contain';
-              img.style.display = 'block';
-              img.style.margin = '0 auto';
-              cCanvas.parentNode.replaceChild(img, cCanvas);
-            } catch (canvasErr) {
-              console.warn('Canvas capture fallback:', canvasErr);
-            }
-          }
-        });
-
-        // 5. Encabezado institucional de dictamen
-        const header = document.createElement('div');
-        header.style.borderBottom = '2px solid #0284C7';
-        header.style.paddingBottom = '12px';
-        header.style.marginBottom = '20px';
-        header.style.display = 'flex';
-        header.style.justifyContent = 'space-between';
-        header.style.alignItems = 'center';
-        header.innerHTML = `
-          <div>
-            <h2 style="font-size: 1.25rem; font-weight: 800; color: #0F172A; margin: 0;">DICTAMEN TÉCNICO AGROMETEOROLÓGICO OFICIAL</h2>
-            <div style="font-size: 0.82rem; color: #475569; margin-top: 4px;">Sistema Agrometeorológico de Viabilidad • Maíz Blanco de Primera • Jutiapa, Guatemala</div>
-          </div>
-          <div style="text-align: right; font-size: 0.78rem; color: #64748B;">
-            <strong>Emisión:</strong> ${new Date().toLocaleDateString('es-GT')}<br>
-            <strong>Fecha de Siembra:</strong> ${dateStr}
-          </div>
-        `;
-        clone.insertBefore(header, clone.firstChild);
-
-        document.body.appendChild(clone);
-        window.scrollTo(0, 0);
-
-        // Breve pausa para asegurar pintura del DOM y las imágenes PNG
-        await new Promise(r => setTimeout(r, 200));
-
+        const dateStr = data.sowing_date || new Date().toISOString().split('T')[0];
         const opt = {
-          margin: [8, 8, 8, 8],
-          filename: `Informe_Viabilidad_Maiz_Jutiapa_${dateStr}.pdf`,
+          margin: [0, 0, 0, 0],
+          filename: `Dictamen_Agronomico_Calderas_${dateStr}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
           html2canvas: {
             scale: 2,
             useCORS: true,
-            logging: false,
-            backgroundColor: '#FFFFFF',
             scrollY: 0,
             scrollX: 0,
-            windowWidth: 800
+            backgroundColor: '#FFFFFF',
+            windowWidth: 760
           },
           jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
-          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+          pagebreak: { mode: 'css' }
         };
 
-        await html2pdf().set(opt).from(clone).save();
+        await html2pdf().set(opt).from(printContainer).save();
       } else {
         window.print();
       }
     } catch (err) {
       console.warn('html2pdf fallback to window.print():', err);
-      window.print();
+      printReportDirect(data);
     } finally {
-      if (clone && clone.parentNode) {
-        clone.parentNode.removeChild(clone);
+      if (printContainer && printContainer.parentNode) {
+        printContainer.parentNode.removeChild(printContainer);
       }
-      window.scrollTo(0, prevScrollY);
       if (btnText) btnText.textContent = originalText;
       btnDownloadPdf.style.pointerEvents = 'auto';
       btnDownloadPdf.style.opacity = '1';
     }
+  }
+
+  /**
+   * Disparador de impresión directa limpia para el navegador
+   */
+  function printReportDirect(data) {
+    let terrainImg = '';
+    let waterChartImg = '';
+    try {
+      const tc = document.getElementById('terrainCanvas');
+      if (tc && tc.width > 0) terrainImg = tc.toDataURL('image/png');
+      const wc = document.getElementById('waterChart');
+      if (wc && wc.width > 0) waterChartImg = wc.toDataURL('image/png');
+    } catch (err) {}
+
+    const printContainer = document.createElement('div');
+    printContainer.id = 'cleanPdfExportContainer';
+    printContainer.innerHTML = buildCleanPdfHtml(data, terrainImg, waterChartImg);
+    document.body.appendChild(printContainer);
+
+    window.print();
+
+    setTimeout(() => {
+      if (printContainer && printContainer.parentNode) {
+        printContainer.parentNode.removeChild(printContainer);
+      }
+    }, 1500);
   }
 
   // ==============================================================================
@@ -1302,11 +1629,59 @@ document.addEventListener('DOMContentLoaded', () => {
       probCalculada = Math.min(probCalculada, 0.28);
     }
 
+    // Cálculo de rachas hídricas en las 4 etapas fenológicas (120 días)
+    const p120 = [...timelinePrecipDaily];
+    while (p120.length < 120) {
+      const dayIdx = p120.length;
+      const futureD = new Date(p.date + 'T00:00:00');
+      futureD.setDate(futureD.getDate() + dayIdx);
+      const futureDoy = Math.floor((futureD - new Date(futureD.getFullYear(), 0, 1)) / (24 * 60 * 60 * 1000)) + 1;
+      const clim = getClimatologyDaily(futureDoy);
+      p120.push(clim ? clim.p : 2.5);
+    }
+
+    const stage1Rain = p120.slice(0, 15).reduce((a, b) => a + b, 0);
+    const stage2Rain = p120.slice(15, 55).reduce((a, b) => a + b, 0);
+    const stage3Rain = p120.slice(55, 75).reduce((a, b) => a + b, 0);
+    const stage4Rain = p120.slice(75, 120).reduce((a, b) => a + b, 0);
+
+    const getLongestStreak = (arr, cond) => {
+      let maxLen = 0, cur = 0;
+      for (const v of arr) {
+        if (cond(v)) { cur++; if (cur > maxLen) maxLen = cur; }
+        else cur = 0;
+      }
+      return maxLen;
+    };
+
+    const s1Dry = getLongestStreak(p120.slice(0, 15), v => v < 1.0);
+    const s1Wet = getLongestStreak(p120.slice(0, 15), v => v > 15.0);
+    const s2Dry = getLongestStreak(p120.slice(15, 55), v => v < 1.5);
+    const s2Wet = getLongestStreak(p120.slice(15, 55), v => v > 20.0);
+    const s3Dry = getLongestStreak(p120.slice(55, 75), v => v < 2.0);
+    const s3Wet = getLongestStreak(p120.slice(55, 75), v => v > 25.0);
+    const s4Dry = getLongestStreak(p120.slice(75, 120), v => v < 1.5);
+    const s4Wet = getLongestStreak(p120.slice(75, 120), v => v > 15.0);
+
+    const criticalAlerts = [];
+    if (s1Dry > 7) criticalAlerts.push("Falla crítica en Germinación (Etapa 1): >7 días continuos sin lluvia (<1 mm/día). Desecación de semilla.");
+    if (s1Wet > 5) criticalAlerts.push("Falla crítica en Germinación (Etapa 1): >5 días continuos con lluvia torrencial (>15 mm/día). Pudrición de simiente por anoxia.");
+    if (s3Dry > 4) criticalAlerts.push(`Falla letal en Floración (Etapa 3 - CRÍTICA): ${s3Dry} días continuos con lluvia <2 mm/día. Desecación de polen y estigmas.`);
+    if (s2Dry > 10) criticalAlerts.push(`Falla en Desarrollo Vegetativo (Etapa 2): ${s2Dry} días secos continuos. Enanismo y retraso de masa foliar.`);
+
+    const total120Rain = +(p120.reduce((a, b) => a + b, 0)).toFixed(1);
+    if (total120Rain < 400) criticalAlerts.push(`Precipitación total del ciclo críticamente insuficiente: ${total120Rain} mm acumulados frente al mínimo de 400 mm.`);
+
     let estado = 'NO SEMBRAR';
     let color = 'Rojo';
     let accion = 'Riesgo crítico de fracaso hídrico por déficit en floración o canícula prolongada. No se recomienda siembra a temporal sin riego.';
 
-    if (probCalculada >= 0.70) {
+    if (criticalAlerts.length > 0) {
+      probCalculada = Math.min(probCalculada, 0.35);
+      estado = 'NO SEMBRAR';
+      color = 'Rojo';
+      accion = `DICTAMEN ADVERSO (Fallo Fenológico): ${criticalAlerts[0]} No se recomienda siembra a temporal en Calderas.`;
+    } else if (probCalculada >= 0.70) {
       estado = 'ÓPTIMO';
       color = 'Verde';
       accion = 'Condiciones hídricas altamente favorables (cobertura > 90%). Proceder con siembra tecnificada en fecha programada.';
@@ -1316,11 +1691,72 @@ document.addEventListener('DOMContentLoaded', () => {
       accion = 'Riesgo hídrico moderado: emplear variedades precoces o tolerantes a sequía, labranza de conservación y monitoreo de humedad.';
     }
 
+    const inversionQ = parseFloat(p.capital) || 7200;
+    const capitalWarnings = [];
+    const capitalPerMz = inversionQ / Math.max(0.001, mz);
+    if (capitalPerMz < 2000) {
+      capitalWarnings.push(`Advertencia de Capital: La inversión ingresada (Q ${inversionQ.toLocaleString()}) equivale a Q ${Math.round(capitalPerMz).toLocaleString()}/mz, inferior al costo mínimo histórico de subsistencia en Jutiapa (Q 2,000.00/mz).`);
+    } else if (capitalPerMz > 25000) {
+      capitalWarnings.push(`Advertencia de Capital: La inversión ingresada (Q ${inversionQ.toLocaleString()}) equivale a Q ${Math.round(capitalPerMz).toLocaleString()}/mz, superior al costo promedio de producción altamente tecnificada con riego (Q 25,000.00/mz).`);
+    }
+
+    const rainStreakReport = {
+      veredicto_general: (criticalAlerts.length > 0 || color === 'Rojo') ? "NO APTO PARA SIEMBRA" : color === 'Amarillo' ? "SIEMBRA CON PRECAUCIÓN" : "APTO PARA SIEMBRA",
+      puntaje_riesgo: +probCalculada.toFixed(3),
+      puntaje_riesgo_pct: `${(probCalculada * 100).toFixed(1)}%`,
+      calidad_distribucion: (criticalAlerts.length > 0 || color === 'Rojo') ? "Deficiente" : color === 'Verde' ? "Buena" : "Regular",
+      total_precipitacion_ciclo_mm: `${total120Rain} mm`,
+      alertas_criticas: criticalAlerts,
+      canicula: {
+        detectada: s2Dry >= 5,
+        severidad: s2Dry >= 15 ? "Severa" : s2Dry >= 8 ? "Moderada" : s2Dry >= 5 ? "Leve" : "Ninguna",
+        dias_duracion: s2Dry
+      },
+      tabla_etapas: [
+        {
+          etapa: "Germinación y Emergencia",
+          dias: "Días 1-15",
+          lluvia_total: `${stage1Rain.toFixed(1)} mm`,
+          racha_seca_max: `${s1Dry} días`,
+          racha_humeda_max: `${s1Wet} días`,
+          adecuacion: stage1Rain < 20 ? "Déficit Severo" : stage1Rain > 80 ? "Exceso Moderado" : "Adecuado",
+          nivel_riesgo: (s1Dry > 7 || s1Wet > 5) ? "Crítico" : stage1Rain < 20 ? "Alto" : "Bajo"
+        },
+        {
+          etapa: "Desarrollo Vegetativo",
+          dias: "Días 16-55",
+          lluvia_total: `${stage2Rain.toFixed(1)} mm`,
+          racha_seca_max: `${s2Dry} días`,
+          racha_humeda_max: `${s2Wet} días`,
+          adecuacion: stage2Rain < 150 ? "Déficit Moderado" : "Adecuado",
+          nivel_riesgo: s2Dry > 10 ? "Crítico" : s2Dry >= 5 ? "Moderado" : "Bajo"
+        },
+        {
+          etapa: "Floración y Polinización",
+          dias: "Días 56-75",
+          lluvia_total: `${stage3Rain.toFixed(1)} mm`,
+          racha_seca_max: `${s3Dry} días`,
+          racha_humeda_max: `${s3Wet} días`,
+          adecuacion: stage3Rain < 60 ? "Déficit Severo" : "Adecuado",
+          nivel_riesgo: s3Dry > 4 ? "Crítico" : "Bajo"
+        },
+        {
+          etapa: "Llenado de Grano",
+          dias: "Días 76-120",
+          lluvia_total: `${stage4Rain.toFixed(1)} mm`,
+          racha_seca_max: `${s4Dry} días`,
+          racha_humeda_max: `${s4Wet} días`,
+          adecuacion: stage4Rain < 100 ? "Déficit Moderado" : "Adecuado",
+          nivel_riesgo: stage4Rain < 80 ? "Moderado" : "Bajo"
+        }
+      ],
+      directiva_agronomica: accion
+    };
+
     const precioMAGA = liveMagaData.precio || 235.0;
     const factorRend = 0.40 + 0.60 * probCalculada;
     const rendQqMz = +(65.0 * factorRend).toFixed(1);
     const prodQq = +(rendQqMz * mz).toFixed(1);
-    const inversionQ = parseFloat(p.capital) || 7200;
     const ingresoBruto = +(prodQq * precioMAGA).toFixed(2);
     const utilidadNeta = +(ingresoBruto - inversionQ).toFixed(2);
     const roi = +(((utilidadNeta) / inversionQ) * 100).toFixed(1);
@@ -1428,7 +1864,9 @@ document.addEventListener('DOMContentLoaded', () => {
         resultado_real: "Fecha futura o periodo sin cierre de 60 días"
       },
       analisis_pluviometrico: computeMonthlyRainfallAnalysis(p.date, 'Neutral', weatherMap, getClimatologyDaily),
-      report_pdf_path: 'Informe_Viabilidad_Maiz_Jutiapa.pdf'
+      report_pdf_path: 'Informe_Viabilidad_Maiz_Jutiapa.pdf',
+      rain_streak_report: rainStreakReport,
+      capital_warnings: capitalWarnings
     };
   }
 

@@ -3208,24 +3208,41 @@ body {
   .clean-data-table td {
     color: #0F172A !important;
   }
+
+  body > *:not(#cleanPdfExportContainer) {
+    display: none !important;
+  }
+
+  #cleanPdfExportContainer {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+  }
+
+  .pdf-page {
+    page-break-after: always !important;
+    break-after: page !important;
+    min-height: 98vh !important;
+    box-sizing: border-box !important;
+    padding: 20px !important;
+  }
+
+  .pdf-page:last-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
 }
 
-/* Reglas de renderizado para exportación de PDF sin elementos transparentes */
-#resultsSectionPdfClone,
-#resultsSectionPdfClone * {
+/* Reglas de renderizado para exportación de PDF sin elementos transparentes ni recortes */
+#cleanPdfExportContainer,
+#cleanPdfExportContainer * {
   opacity: 1 !important;
-  transform: none !important;
   visibility: visible !important;
-}
-
-#resultsSectionPdfClone .bento-card-clean,
-#resultsSectionPdfClone .semaforo-banner,
-#resultsSectionPdfClone .chart-box-clean,
-#resultsSectionPdfClone .finance-box-clean,
-#resultsSectionPdfClone .table-wrap-clean,
-#resultsSectionPdfClone #monthlyRainfallBox {
-  break-inside: avoid !important;
-  page-break-inside: avoid !important;
-  margin-bottom: 20px !important;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
 }
 

@@ -274,7 +274,8 @@ export default async function handler(req, res) {
       const dayIdx = p120.length;
       const futureD = new Date(sowingDate);
       futureD.setDate(futureD.getDate() + dayIdx);
-      const clim = getClimatologyDaily(futureD.getMonth() + 1, futureD.getDate());
+      const futureDoy = Math.floor((futureD - new Date(futureD.getFullYear(), 0, 1)) / (24 * 60 * 60 * 1000)) + 1;
+      const clim = getClimatologyDaily(futureDoy);
       p120.push(clim ? clim.p : 2.5);
     }
 
@@ -310,12 +311,24 @@ export default async function handler(req, res) {
     const total120Rain = +(p120.reduce((a, b) => a + b, 0)).toFixed(1);
     if (total120Rain < 400) criticalAlerts.push(`Precipitación total del ciclo críticamente insuficiente: ${total120Rain} mm acumulados frente al mínimo de 400 mm.`);
 
-    // Calibración estricta contra Falsos Positivos y Falsos Negativos
+    // Declaración y calibración del semáforo agronómico
+    let semaforoEstado = 'NO SEMBRAR';
+    let semaforoColor = 'Rojo';
+    let semaforoAccion = 'Riesgo crítico de fracaso hídrico por déficit en floración o canícula prolongada. No se recomienda siembra a temporal sin riego.';
+
     if (criticalAlerts.length > 0) {
       probCalculada = Math.min(probCalculada, 0.35);
       semaforoEstado = 'NO SEMBRAR';
       semaforoColor = 'Rojo';
       semaforoAccion = `DICTAMEN ADVERSO (Fallo Fenológico): ${criticalAlerts[0]} No se recomienda siembra a temporal en Calderas.`;
+    } else if (probCalculada >= 0.70) {
+      semaforoEstado = 'RECOMENDADO PARA SIEMBRA';
+      semaforoColor = 'Verde';
+      semaforoAccion = 'Condiciones hídricas altamente favorables (cobertura > 90%). Proceder con siembra tecnificada en fecha programada.';
+    } else if (probCalculada >= 0.40) {
+      semaforoEstado = 'SIEMBRA CONDICIONADA';
+      semaforoColor = 'Amarillo';
+      semaforoAccion = 'Riesgo hídrico moderado: emplear variedades precoces o tolerantes a sequía, labranza de conservación y monitoreo de humedad.';
     }
 
     // Advertencias de Capital según costos históricos locales
@@ -328,10 +341,10 @@ export default async function handler(req, res) {
     }
 
     const rainStreakReport = {
-      veredicto_general: criticalAlerts.length > 0 ? "NO APTO PARA SIEMBRA" : semaforoColor === 'Amarillo' ? "SIEMBRA CON PRECAUCIÓN" : "APTO PARA SIEMBRA",
+      veredicto_general: (criticalAlerts.length > 0 || semaforoColor === 'Rojo') ? "NO APTO PARA SIEMBRA" : semaforoColor === 'Amarillo' ? "SIEMBRA CON PRECAUCIÓN" : "APTO PARA SIEMBRA",
       puntaje_riesgo: +probCalculada.toFixed(3),
       puntaje_riesgo_pct: `${(probCalculada * 100).toFixed(1)}%`,
-      calidad_distribucion: criticalAlerts.length > 0 ? "Deficiente" : semaforoColor === 'Verde' ? "Buena" : "Regular",
+      calidad_distribucion: (criticalAlerts.length > 0 || semaforoColor === 'Rojo') ? "Deficiente" : semaforoColor === 'Verde' ? "Buena" : "Regular",
       total_precipitacion_ciclo_mm: `${total120Rain} mm`,
       alertas_criticas: criticalAlerts,
       canicula: {
@@ -503,7 +516,9 @@ export default async function handler(req, res) {
         resultado_real: "Fecha futura o periodo sin cierre de 60 días"
       },
       analisis_pluviometrico: computeMonthlyRainfallAnalysis(sowingDate, faseEnso, weatherMap, getClimatologyDaily),
-      report_pdf_path: 'Informe_Viabilidad_Maiz_Jutiapa.pdf'
+      report_pdf_path: 'Informe_Viabilidad_Maiz_Jutiapa.pdf',
+      rain_streak_report: rainStreakReport,
+      capital_warnings: capitalWarnings
     };
 
     res.status(200).json(responseData);

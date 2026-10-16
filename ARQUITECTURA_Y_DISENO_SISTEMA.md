@@ -16,13 +16,14 @@
 | No. | Nombre del Diagrama | Tipo de Modelado | Referencia |
 | :--- | :--- | :--- | :--- |
 | **Figura 1** | Mapa Mental del Ecosistema AGRO-JUTIAPA | Mapa Mental Estructurado | [1. Mapa Mental del Ecosistema](#mapa-mental-del-ecosistema-agro-jutiapa) |
-| **Figura 2** | Arquitectura de Capas y Topología de Despliegue | Diagrama de Arquitectura de Capas | [1.3. Arquitectura del Sistema](#13-arquitectura) |
-| **Figura 3** | Casos de Uso del Negocio y Actores del Ecosistema | Diagrama de Casos de Uso (UML) | [1.8. Diagramas de Caso de Uso](#18-diagramas-de-caso-de-uso) |
-| **Figura 4** | Secuencia de Ejecución del Pipeline Asíncrono | Diagrama de Secuencia (UML) | [1.9. Diagramas de Secuencia](#19-diagramas-de-secuencia) |
-| **Figura 5** | Máquina de Estados del Dictamen Semafórico | Diagrama de Estados (FSM) | [1.10. Diagramas de Estado](#110-diagramas-de-estado) |
-| **Figura 6** | Ciclo Fenológico del Cultivo de Maíz a 120 Días | Diagrama de Estados de Dominio | [1.10. Diagramas de Estado](#110-diagramas-de-estado) |
-| **Figura 7** | Modelo Lógico de Datos Normalizado (DER) | Diagrama Entidad-Relación (DER) | [1.11. Diagrama Entidad Relación (DER)](#111-diagrama-entidad-relación-der) |
-| **Figura 8** | Catálogo de Patrones de Arquitectura y Diseño GoF | Diagrama Estructural de Patrones | [1.12. Patrones de Arquitectura](#112-patrones-de-arquitectura) |
+| **Figura 2** | Distribución y Proporción de Lenguajes de Programación | Gráfica de Distribución (Mermaid Pie & Draw.io) | [1.1. Lenguaje de Programación](#11-lenguaje-de-programación) |
+| **Figura 3** | Arquitectura de Capas y Topología de Despliegue | Diagrama de Arquitectura de Capas | [1.3. Arquitectura del Sistema](#13-arquitectura) |
+| **Figura 4** | Casos de Uso del Negocio y Actores del Ecosistema | Diagrama de Casos de Uso (UML) | [1.8. Diagramas de Caso de Uso](#18-diagramas-de-caso-de-uso) |
+| **Figura 5** | Secuencia de Ejecución del Pipeline Asíncrono | Diagrama de Secuencia (UML) | [1.9. Diagramas de Secuencia](#19-diagramas-de-secuencia) |
+| **Figura 6** | Máquina de Estados del Dictamen Semafórico | Diagrama de Estados (FSM) | [1.10. Diagramas de Estado](#110-diagramas-de-estado) |
+| **Figura 7** | Ciclo Fenológico del Cultivo de Maíz a 120 Días | Diagrama de Estados de Dominio | [1.10. Diagramas de Estado](#110-diagramas-de-estado) |
+| **Figura 8** | Modelo Lógico de Datos Normalizado (DER) | Diagrama Entidad-Relación (DER) | [1.11. Diagrama Entidad Relación (DER)](#111-diagrama-entidad-relación-der) |
+| **Figura 9** | Catálogo de Patrones de Arquitectura y Diseño GoF | Diagrama Estructural de Patrones | [1.12. Patrones de Arquitectura](#112-patrones-de-arquitectura) |
 
 ---
 
@@ -77,6 +78,26 @@ flowchart TD
 ### 1.1. Lenguaje de Programación
 
 El sistema adopta un enfoque políglota estrictamente demarcado por capas de responsabilidad para conciliar el rendimiento computacional numérico con una presentación en cliente ágil, ligera y sin sobrecarga de frameworks.
+
+La **Figura 2** ilustra la proporción volumétrica y distribución de líneas de código fuente (LOC) por lenguaje en el entorno de producción (13,597 LOC en total):
+
+```mermaid
+pie title Distribución del Código Fuente por Lenguaje (13,597 LOC de Producción)
+    "Python 3.10+ (Núcleo Científico, ML y API)" : 4879
+    "CSS3 Moderno (Tokens, Responsive y Animaciones)" : 3930
+    "JavaScript ES6+ (SPA, Motor CAD y Serverless)" : 3635
+    "HTML5 Semántico (Estructura y Accesibilidad)" : 1153
+```
+
+> **Diagrama de Distribución Estructural:** Modelo vectorial disponible en [`docs/diagrams/distribucion_lenguajes.drawio`](file:///c:/Users/gimen/Downloads/analizador/docs/diagrams/distribucion_lenguajes.drawio) (especificación JSON en [`docs/diagrams/distribucion_lenguajes.json`](file:///c:/Users/gimen/Downloads/analizador/docs/diagrams/distribucion_lenguajes.json)).
+
+| Lenguaje de Programación | Versión / Estándar | Líneas de Código (LOC) | Proporción (%) | Archivos | Responsabilidad Arquitectónica Principal |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Python** | v3.10+ (PEP 8, PEP 484, PEP 557) | 4,879 | 35.9% | 16 | Motores biofísicos FAO-56, Machine Learning (XGBoost/RF), sanitizador anti-inyección, pipeline analítico, servidor multihilo y motor de reportes. |
+| **CSS3** | CSS Grid, Flexbox, Custom Props | 3,930 | 28.9% | 1 | Sistema de diseño, tokens centralizados `:root`, maquetación responsive fluida (móvil y escritorio), animaciones por GPU y modales. |
+| **JavaScript** | ECMAScript 2022 (ES6+) | 3,635 | 26.7% | 6 | Controlador SPA reactivo (`app.js`), motor vectorial CAD Canvas (`terrain.js`), renderizador de curvas hídricas (`charts.js`) y APIs serverless Edge en Node.js. |
+| **HTML5** | HTML5 Semántico (W3C / WHATWG) | 1,153 | 8.5% | 1 | Estructura jerárquica y accesible de la SPA, formularios de captura, visor de resultados y contenedores dinámicos. |
+| **Total Global** | — | **13,597** | **100.0%** | **24** | **Código fuente de producción del sistema** |
 
 #### Aspectos Principales:
 1. **Python Runtime (v3.10+ de 64 bits):**
@@ -135,7 +156,7 @@ El sistema adopta una estrategia de **persistencia sin estado persistente de usu
 
 ### 1.3. Arquitectura
 
-La solución implementa una **Arquitectura de Capas Desacoplada con Doble Entorno de Ejecución (Dual Runtime Pattern)**, permitiendo su despliegue tanto en infraestructura local independiente como en redes globales Serverless.
+La **Figura 3** ilustra la **Arquitectura de Capas Desacoplada con Doble Entorno de Ejecución (Dual Runtime Pattern)** del sistema, permitiendo su despliegue tanto en infraestructura local independiente como en redes globales Serverless:
 
 ```mermaid
 flowchart TB
@@ -303,7 +324,7 @@ El diseño modular del código se fundamenta en el **Principio de Responsabilida
 
 ### 1.8. Diagramas de Caso de Uso
 
-La **Figura 3** ilustra los casos de uso principales, actores y dependencias del sistema:
+La **Figura 4** ilustra los casos de uso principales, actores y dependencias del sistema:
 
 ```mermaid
 flowchart LR
@@ -375,7 +396,7 @@ flowchart LR
 
 ### 1.9. Diagramas de Secuencia
 
-La **Figura 4** modela la secuencia temporal y asíncrona de mensajes entre los componentes del software:
+La **Figura 5** modela la secuencia temporal y asíncrona de mensajes entre los componentes del software:
 
 ```mermaid
 sequenceDiagram
@@ -428,7 +449,7 @@ sequenceDiagram
 ### 1.10. Diagramas de Estado
 
 #### 1. Máquina de Estados del Dictamen Semafórico:
-La **Figura 5** describe las transiciones deterministas del semáforo agrometeorológico:
+La **Figura 6** describe las transiciones deterministas del semáforo agrometeorológico:
 
 ```mermaid
 stateDiagram-v2
@@ -469,7 +490,7 @@ stateDiagram-v2
 ```
 
 #### 2. Máquina de Estados del Ciclo Fenológico del Maíz (120 Días):
-La **Figura 6** representa las transiciones biológicas y los estados de fallo durante el desarrollo del cultivo:
+La **Figura 7** representa las transiciones biológicas y los estados de fallo durante el desarrollo del cultivo:
 
 ```mermaid
 stateDiagram-v2
@@ -507,7 +528,7 @@ stateDiagram-v2
 
 ### 1.11. Diagrama Entidad Relación (DER)
 
-La **Figura 7** formaliza el modelo lógico y relacional de entidades en **Tercera Forma Normal (3FN)** con tipos de datos y restricciones de cardinalidad estricta:
+La **Figura 8** formaliza el modelo lógico y relacional de entidades en **Tercera Forma Normal (3FN)** con tipos de datos y restricciones de cardinalidad estricta:
 
 ```mermaid
 erDiagram
@@ -624,7 +645,7 @@ erDiagram
 
 ### 1.12. Patrones de Arquitectura
 
-La **Figura 8** ilustra los patrones de software aplicados a nivel de sistema y diseño orientado a objetos:
+La **Figura 9** ilustra los patrones de software aplicados a nivel de sistema y diseño orientado a objetos:
 
 ```mermaid
 flowchart TD

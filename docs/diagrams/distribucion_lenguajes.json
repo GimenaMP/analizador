@@ -1,0 +1,45 @@
+{
+  "title": "Distribución del Stack de Lenguajes de Programación - AGRO-JUTIAPA",
+  "type": "flowchart",
+  "theme": "default",
+  "nodes": [
+    { "id": "stack_python", "label": "Python 3.10+\n(4,879 LOC - 35.9%)\n16 Archivos", "type": "rectangle" },
+    { "id": "stack_css", "label": "CSS3 Moderno\n(3,930 LOC - 28.9%)\n1 Archivo", "type": "rectangle" },
+    { "id": "stack_js", "label": "JavaScript ES6+\n(3,635 LOC - 26.7%)\n6 Archivos", "type": "rectangle" },
+    { "id": "stack_html", "label": "HTML5 Semántico\n(1,153 LOC - 8.5%)\n1 Archivo", "type": "rectangle" },
+
+    { "id": "py_core", "label": "Física FAO-56, ML XGBoost,\nValidador & Rachas\n(core/)", "type": "rectangle" },
+    { "id": "py_srv", "label": "Servidor HTTP Multihilo\ny Pipeline Orquestador\n(server.py / pipeline.py)", "type": "rectangle" },
+    { "id": "py_rep", "label": "Generador de Dictámenes PDF\n(reporting/pdf_generator.py)", "type": "rectangle" },
+
+    { "id": "css_design", "label": "Design System & Variables :root\nGrid/Flexbox Responsive\n(front/css/style.css)", "type": "rectangle" },
+    { "id": "css_anim", "label": "Animaciones GPU, Modales\n& Tarjetas Semafóricas", "type": "rectangle" },
+
+    { "id": "js_spa", "label": "Controlador Cliente SPA\n(front/js/app.js)", "type": "rectangle" },
+    { "id": "js_cad", "label": "Motor Gráfico CAD Canvas\n(front/js/terrain.js)", "type": "rectangle" },
+    { "id": "js_chart", "label": "Gráficas Hídricas Chart.js\n(front/js/charts.js)", "type": "rectangle" },
+    { "id": "js_cloud", "label": "Serverless Functions Node.js\n(api/analyze.js & maga-price.js)", "type": "rectangle" },
+
+    { "id": "html_struct", "label": "Estructura Semántica SPA\nAccesibilidad & Formularios\n(front/index.html)", "type": "rectangle" }
+  ],
+  "edges": [
+    { "sourceId": "stack_python", "targetId": "py_core", "label": "Implementa" },
+    { "sourceId": "stack_python", "targetId": "py_srv", "label": "Ejecuta" },
+    { "sourceId": "stack_python", "targetId": "py_rep", "label": "Compila" },
+
+    { "sourceId": "stack_css", "targetId": "css_design", "label": "Define" },
+    { "sourceId": "stack_css", "targetId": "css_anim", "label": "Acelera" },
+
+    { "sourceId": "stack_js", "targetId": "js_spa", "label": "Controla" },
+    { "sourceId": "stack_js", "targetId": "js_cad", "label": "Renderiza" },
+    { "sourceId": "stack_js", "targetId": "js_chart", "label": "Grafica" },
+    { "sourceId": "stack_js", "targetId": "js_cloud", "label": "Despliega" },
+
+    { "sourceId": "stack_html", "targetId": "html_struct", "label": "Estructura" },
+
+    { "sourceId": "html_struct", "targetId": "css_design", "label": "Aplica Estilos" },
+    { "sourceId": "html_struct", "targetId": "js_spa", "label": "Enlaza Eventos" },
+    { "sourceId": "js_spa", "targetId": "py_srv", "label": "HTTP Local" },
+    { "sourceId": "js_spa", "targetId": "js_cloud", "label": "HTTP Cloud" }
+  ]
+}

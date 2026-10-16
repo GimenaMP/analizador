@@ -2825,29 +2825,38 @@ body {
 .faq-list {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 12px;
-  max-width: 860px;
+  width: 100%;
+  max-width: 680px;
   margin: 0 auto;
 }
 
 .faq-item {
+  width: 100%;
+  max-width: 680px;
+  box-sizing: border-box;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-subtle);
-  transition: border-color var(--trans-fast);
+  transition: border-color var(--trans-fast), box-shadow var(--trans-fast);
 }
 
 .faq-item.active {
   border-color: var(--green-main);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.08);
 }
 
 .faq-question {
+  width: 100%;
+  box-sizing: border-box;
   padding: 16px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
   cursor: pointer;
   user-select: none;
   transition: background var(--trans-fast);
@@ -2862,11 +2871,15 @@ body {
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-primary);
+  margin: 0;
+  line-height: 1.4;
+  flex: 1;
 }
 
 .faq-icon {
   width: 18px;
   height: 18px;
+  flex-shrink: 0;
   color: var(--text-muted);
   transition: transform var(--trans-spring);
 }

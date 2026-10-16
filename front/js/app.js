@@ -757,15 +757,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (magaPriceBadge) magaPriceBadge.textContent = `Q ${f.precio_maga_qq.toFixed(2)} por quintal`;
 
     kpiYield.textContent = `${f.rendimiento_estimado_qq_mz} qq por manzana`;
-    kpiCost.textContent = `Q ${f.capital_inversion_q.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-    kpiRevenue.textContent = `Q ${f.ingreso_bruto_q.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-    kpiNetProfit.textContent = `Q ${f.utilidad_neta_q.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+    const capInv = Number(f.capital_inversion_q || 0);
+    const ingBruto = Number(f.ingreso_bruto_q || 0);
+    const utNeta = Number(f.utilidad_neta_q || 0);
+    const roiVal = Number(f.roi_pct || 0);
+    const precMaga = Number(f.precio_maga_qq || 235);
+    const prodQq = Number(f.produccion_total_estimada_qq || 0);
+    const rendMz = Number(f.rendimiento_estimado_qq_mz || 0);
+    const ptEq = Number(f.punto_equilibrio_qq || 0);
+    const invQq = f.inversion_por_quintal_q != null ? Number(f.inversion_por_quintal_q) : (prodQq > 0 ? capInv / prodQq : 0);
+    const mzVal = Number(terr.manzanas || 0);
+
+    kpiCost.textContent = `Q ${capInv.toLocaleString('es-GT', {minimumFractionDigits: 2})}`;
+    kpiRevenue.textContent = `Q ${ingBruto.toLocaleString('es-GT', {minimumFractionDigits: 2})}`;
+    kpiNetProfit.textContent = `Q ${utNeta.toLocaleString('es-GT', {minimumFractionDigits: 2})}`;
     
-    if (f.utilidad_neta_q >= 0) {
-      kpiRoiSub.textContent = `Retorno sobre inversión ROI: +${f.roi_pct}%`;
+    if (utNeta >= 0) {
+      kpiRoiSub.textContent = `Retorno sobre inversión ROI: +${roiVal}%`;
       kpiRoiSub.style.color = 'var(--green-main)';
     } else {
-      kpiRoiSub.textContent = `Retorno sobre inversión ROI: ${f.roi_pct}% • Riesgo de pérdida`;
+      kpiRoiSub.textContent = `Retorno sobre inversión ROI: ${roiVal}% • Riesgo de pérdida`;
       kpiRoiSub.style.color = 'var(--red-text)';
     }
 
@@ -775,49 +786,49 @@ document.addEventListener('DOMContentLoaded', () => {
       {
         concepto: 'Capital de Inversión Aportado',
         detalle: 'Inversión ingresada directamente por el productor',
-        monto: `Q ${f.capital_inversion_q.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
+        monto: `Q ${capInv.toLocaleString('es-GT', {minimumFractionDigits: 2})}`,
         highlight: 'cost'
       },
       {
-        concepto: `Producción Total Estimada de Maíz ${f.tipo_maiz}`,
-        detalle: `${terr.manzanas.toFixed(3)} manzanas a ${f.rendimiento_estimado_qq_mz} qq por manzana`,
-        monto: `${f.produccion_total_estimada_qq} quintales`,
+        concepto: `Producción Total Estimada de Maíz ${f.tipo_maiz || 'Blanco'}`,
+        detalle: `${mzVal.toFixed(3)} manzanas a ${rendMz} qq por manzana`,
+        monto: `${prodQq} quintales`,
         highlight: 'info'
       },
       {
         concepto: 'Precio Oficial de Venta MAGA',
-        detalle: `Mercados Mayoristas de Oriente al ${f.fecha_actualizacion_maga}`,
-        monto: `Q ${f.precio_maga_qq.toFixed(2)} por quintal`,
+        detalle: `Mercados Mayoristas de Oriente al ${f.fecha_actualizacion_maga || 'Actual'}`,
+        monto: `Q ${precMaga.toFixed(2)} por quintal`,
         highlight: 'info'
       },
       {
         concepto: 'Ingreso Bruto Proyectado',
-        detalle: `${f.produccion_total_estimada_qq} quintales a Q ${f.precio_maga_qq.toFixed(2)} por quintal`,
-        monto: `Q ${f.ingreso_bruto_q.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
+        detalle: `${prodQq} quintales a Q ${precMaga.toFixed(2)} por quintal`,
+        monto: `Q ${ingBruto.toLocaleString('es-GT', {minimumFractionDigits: 2})}`,
         highlight: 'revenue'
       },
       {
         concepto: 'Utilidad Neta Proyectada',
-        detalle: `Ingreso Bruto de Q ${f.ingreso_bruto_q.toLocaleString(undefined, {minimumFractionDigits: 2})} menos Inversión de Q ${f.capital_inversion_q.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
-        monto: `Q ${f.utilidad_neta_q.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
-        highlight: f.utilidad_neta_q >= 0 ? 'profit' : 'loss'
+        detalle: `Ingreso Bruto de Q ${ingBruto.toLocaleString('es-GT', {minimumFractionDigits: 2})} menos Inversión de Q ${capInv.toLocaleString('es-GT', {minimumFractionDigits: 2})}`,
+        monto: `Q ${utNeta.toLocaleString('es-GT', {minimumFractionDigits: 2})}`,
+        highlight: utNeta >= 0 ? 'profit' : 'loss'
       },
       {
         concepto: 'Retorno sobre la Inversión ROI',
         detalle: 'Utilidad neta sobre inversión en porcentaje',
-        monto: `${f.roi_pct}%`,
-        highlight: f.roi_pct >= 0 ? 'profit' : 'loss'
+        monto: `${roiVal}%`,
+        highlight: roiVal >= 0 ? 'profit' : 'loss'
       },
       {
         concepto: 'Punto de Equilibrio en Cosecha',
         detalle: 'Quintales mínimos de maíz requeridos para recuperar el capital invertido',
-        monto: `${f.punto_equilibrio_qq} quintales`,
+        monto: `${ptEq} quintales`,
         highlight: 'neutral'
       },
       {
         concepto: 'Inversión por Quintal Producido',
         detalle: 'Inversión total dividida entre quintales estimados',
-        monto: `Q ${f.inversion_por_quintal_q.toFixed(2)} por quintal`,
+        monto: `Q ${invQq.toFixed(2)} por quintal`,
         highlight: 'neutral'
       }
     ];
@@ -975,6 +986,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Exponer para pruebas y acceso programático seguro
+  window.renderResults = renderResults;
+  window.downloadReportPDF = downloadReportPDF;
+
   /**
    * Construye el documento HTML ejecutivo de 3 páginas exactas para el Dictamen Agronómico Oficial.
    * Diseñado con estilos CSS inline absolutos y limpios para garantizar cero fallos de renderizado
@@ -1057,7 +1072,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="pdf-document" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #FFFFFF; color: #0F172A; width: 760px; margin: 0 auto; line-height: 1.35; font-size: 13px;">
         
         <!-- PÁGINA 1 -->
-        <div class="pdf-page" style="page-break-after: always; break-after: page; min-height: 1020px; padding: 26px 30px; box-sizing: border-box; position: relative;">
+        <div class="pdf-page" style="page-break-after: always; break-after: page; height: 980px; max-height: 980px; padding: 24px 28px; box-sizing: border-box; position: relative; overflow: hidden;">
           
           <!-- Encabezado Institucional -->
           <div style="border-bottom: 2px solid #0284C7; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start;">
@@ -1152,7 +1167,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
 
         <!-- PÁGINA 2 -->
-        <div class="pdf-page" style="page-break-after: always; break-after: page; min-height: 1020px; padding: 26px 30px; box-sizing: border-box; position: relative;">
+        <div class="pdf-page" style="page-break-after: always; break-after: page; height: 980px; max-height: 980px; padding: 24px 28px; box-sizing: border-box; position: relative; overflow: hidden;">
           
           <!-- Encabezado Página 2 -->
           <div style="border-bottom: 2px solid #059669; padding-bottom: 10px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
@@ -1234,7 +1249,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
 
         <!-- PÁGINA 3 -->
-        <div class="pdf-page" style="min-height: 1020px; padding: 26px 30px; box-sizing: border-box; position: relative;">
+        <div class="pdf-page" style="height: 980px; max-height: 980px; padding: 24px 28px; box-sizing: border-box; position: relative; overflow: hidden;">
           
           <!-- Encabezado Página 3 -->
           <div style="border-bottom: 2px solid #D97706; padding-bottom: 10px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
@@ -1337,8 +1352,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /**
    * Generador y exportador de Dictamen Técnico en PDF en el navegador.
-   * CERO PÁGINAS EN BLANCO: Construye un DOM plano fuera del flujo de animaciones y scroll,
-   * con imágenes fijas de canvas y parámetros de corte por CSS exactos.
+   * CERO PÁGINAS EN BLANCO: Construye un DOM plano dentro de un wrapper off-screen seguro,
+   * con imágenes fijas de canvas y parámetros de corte exactos reconocidos por html2pdf.
    */
   async function downloadReportPDF(data) {
     if (!data) return;
@@ -1361,19 +1376,30 @@ document.addEventListener('DOMContentLoaded', () => {
       console.warn('Canvas capture fallback:', canvasErr);
     }
 
-    // 2. Construir contenedor aislado para la exportación PDF
+    // 2. Construir wrapper off-screen aislado para la exportación PDF
+    // REGLA CRÍTICA: NO aplicar position: fixed ni position: absolute a cleanPdfExportContainer.
+    // Un elemento con position: fixed clonado por html2pdf colapsa su altura a 0 (h=0),
+    // generando un canvas 1632x0 y descargando una hoja en blanco.
+    const wrapper = document.createElement('div');
+    wrapper.id = 'cleanPdfWrapper';
+    wrapper.style.position = 'absolute';
+    wrapper.style.top = '-99999px';
+    wrapper.style.left = '0';
+    wrapper.style.width = '760px';
+    wrapper.style.overflow = 'hidden';
+
     const printContainer = document.createElement('div');
     printContainer.id = 'cleanPdfExportContainer';
-    printContainer.style.position = 'fixed';
-    printContainer.style.top = '0';
-    printContainer.style.left = '0';
+    printContainer.style.position = 'relative';
     printContainer.style.width = '760px';
     printContainer.style.background = '#FFFFFF';
-    printContainer.style.zIndex = '999999';
-    printContainer.style.pointerEvents = 'none';
     printContainer.innerHTML = buildCleanPdfHtml(data, terrainImg, waterChartImg);
 
-    document.body.appendChild(printContainer);
+    wrapper.appendChild(printContainer);
+    document.body.appendChild(wrapper);
+
+    // Pausa técnica para permitir el renderizado del DOM y decodificación de Data URLs
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     try {
       if (typeof html2pdf !== 'undefined') {
@@ -1391,19 +1417,19 @@ document.addEventListener('DOMContentLoaded', () => {
             windowWidth: 760
           },
           jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
-          pagebreak: { mode: 'css' }
+          pagebreak: { mode: ['css', 'legacy'] }
         };
 
         await html2pdf().set(opt).from(printContainer).save();
       } else {
-        window.print();
+        printReportDirect(data);
       }
     } catch (err) {
       console.warn('html2pdf fallback to window.print():', err);
       printReportDirect(data);
     } finally {
-      if (printContainer && printContainer.parentNode) {
-        printContainer.parentNode.removeChild(printContainer);
+      if (wrapper && wrapper.parentNode) {
+        wrapper.parentNode.removeChild(wrapper);
       }
       if (btnText) btnText.textContent = originalText;
       btnDownloadPdf.style.pointerEvents = 'auto';

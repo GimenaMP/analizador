@@ -3209,8 +3209,19 @@ body {
     color: #0F172A !important;
   }
 
-  body > *:not(#cleanPdfExportContainer) {
+  body > *:not(#cleanPdfExportContainer):not(#cleanPdfWrapper) {
     display: none !important;
+  }
+
+  #cleanPdfWrapper {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #FFFFFF !important;
+    top: auto !important;
+    left: auto !important;
   }
 
   #cleanPdfExportContainer {
@@ -3238,6 +3249,8 @@ body {
 }
 
 /* Reglas de renderizado para exportación de PDF sin elementos transparentes ni recortes */
+#cleanPdfWrapper,
+#cleanPdfWrapper *,
 #cleanPdfExportContainer,
 #cleanPdfExportContainer * {
   opacity: 1 !important;

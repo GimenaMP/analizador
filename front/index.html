@@ -79,7 +79,7 @@
 
           <div class="stat-cell">
             <span class="stat-number" id="heroMagaPriceStat">Q 235.00</span>
-            <span class="stat-label">Precio oficial MAGA (La Terminal)</span>
+            <span class="stat-label">Precio oficial MAGA </span>
           </div>
         </div>
       </div>
@@ -152,7 +152,7 @@
               <div class="slide-card-content">
                 <h3 class="slide-card-title">Precios Mayoristas MAGA &amp; P&amp;L</h3>
                 <p class="slide-card-desc">
-                  Evaluación financiera con cotizaciones oficiales en tiempo real del SIMPA (La Terminal: Q 235.00/qq), punto de equilibrio y proyección de rentabilidad neta por manzana para Maíz Blanco.
+                  Evaluación financiera con cotizaciones oficiales en tiempo real del SIMPA , punto de equilibrio y proyección de rentabilidad neta por manzana para Maíz Blanco.
                 </p>
               </div>
             </article>
@@ -623,7 +623,7 @@
           <div class="spinner-ring-clean"></div>
           <div>
             <strong id="progressMessage" class="progress-title-text">Consultando reanálisis ERA5 y NOAA PSL...</strong>
-            <div class="progress-subtext">Modelos: Open-Meteo Archive • NOAA PSL • Saxton & Rawls • XGBoost</div>
+            <div class="progress-subtext">Modelos: Open-Meteo Archive, NOAA PSL,  Saxton & Rawls, XGBoost</div>
           </div>
         </div>
         <div class="progress-steps-grid">
@@ -1005,7 +1005,7 @@
                 <span>Dictamen_Agronomico_Calderas_San_Jose_Acatempa.pdf</span>
               </div>
               <div style="font-size: 0.70rem; color: #94A3B8;">
-                3 Páginas Carta • 800px Exactos
+                3 Páginas Carta 
               </div>
             </div>
 
@@ -1023,10 +1023,10 @@
               </div>
 
               <div style="display: flex; gap: 10px; align-items: center;">
-                <button type="button" class="btn-review-download" id="btnDownloadPdfBottom" style="padding: 10px 20px; font-size: 0.84rem;">
+                <!--  <button type="button" class="btn-review-download" id="btnDownloadPdfBottom" style="padding: 10px 20px; font-size: 0.84rem;">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   <span>Descargar PDF Oficial</span>
-                </button>
+                </button>-->
               </div>
             </div>
 
@@ -1050,9 +1050,14 @@
             <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
           <div class="faq-answer">
-            Utilizamos ecuaciones de Saxton & Rawls (2006) calibradas para suelo de Jutiapa (26% Arcilla, 52% Arena, 1.8% Materia Orgánica) junto con metodología FAO-56 ($ET_c = K_c \times ET_0$).
+            <p>El motor de cálculo hídrico adapta los modelos internacionales a las condiciones reales del terreno:</p>
+            <ul>
+              <li><strong>Calibración local:</strong> Ecuaciones de Saxton &amp; Rawls (2006) ajustadas para Jutiapa (26% arcilla, 52% arena, 1,8% materia orgánica).</li>
+              <li><strong>Modelo agronómico:</strong> Metodología FAO-56 aplicada mediante la relación estándar <code class="math-inline"><i>ET<sub>c</sub></i> = <i>K<sub>c</sub></i> &times; <i>ET<sub>0</sub></i></code>.</li>
+            </ul>
           </div>
         </div>
+      </div>
 
         <div class="faq-item reveal-on-scroll from-bottom delay-2">
           <div class="faq-question">

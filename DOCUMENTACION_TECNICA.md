@@ -25,50 +25,6 @@ A diferencia de las herramientas convencionales basadas en valores estáticos o 
 6. Proyecta el Estado de Pérdidas y Ganancias (P&L) en función del capital propio del productor y precios oficiales mayoristas del Ministerio de Agricultura, Ganadería y Alimentación (MAGA) obtenidos mediante scraping automatizado.
 7. Emite un Dictamen Técnico Oficial maquetado en PDF de 3 páginas con visor de previsualización interactivo.
 
-### 1.1. Matriz de Control y Documentos de Proyectos de Ciencia de Datos (CRISP-DM / MLOps)
-
-La siguiente matriz estandarizada formaliza la gobernanza, trazabilidad y control de artefactos del proyecto conforme al ciclo de vida CRISP-DM (*Cross-Industry Standard Process for Data Mining*) y las directrices de aseguramiento MLOps:
-
-**Nombre del Proyecto:** Sistema Abierto de Viabilidad Agrícola y Proyección Agrometeorológica (AGRO-JUTIAPA)  
-**Administrador del Proyecto:** Ing. Fátima Gimena Medrano Pineda (Arquitectura de Software y Modelado Agroclimático)  
-**Ámbito Territorial:** Calderas, San José Acatempa, Jutiapa, Guatemala
-
-| DOCUMENTACIÓN REQUERIDA | SOLICITADO POR | FECHA DE SOLICITUD | FECHA EN QUE SE NECESITA | ASIGNADO A | FECHA DE RECEPCIÓN | UBICACIÓN |
-| :--- | :--- | :---: | :---: | :--- | :---: | :--- |
-| **ENTENDIMIENTO DEL NEGOCIO** | | | | | | |
-| Definición de los objetivos | Comité de Tesis UMG / Productores Calderas | 15/01/2026 | 15/02/2026 | F. Medrano (Arq. Software) | 10/02/2026 | [`DOCUMENTACION_TECNICA.md#1`](file:///c:/Users/gimen/Downloads/analizador/DOCUMENTACION_TECNICA.md#1-visión-general-del-sistema-y-contexto-de-ingeniería) |
-| Clasificación de categorías | Agrónomos Asesores / MAGA Jutiapa | 15/01/2026 | 20/02/2026 | F. Medrano (Data Scientist) | 18/02/2026 | [`core/models.py`](file:///c:/Users/gimen/Downloads/analizador/core/models.py) (Semáforo Verde/Amarillo/Rojo) |
-| Requisitos del modelo | Dirección de Postgrados UMG | 01/02/2026 | 28/02/2026 | F. Medrano (Lead Dev) | 25/02/2026 | [`ARQUITECTURA_Y_DISENO_SISTEMA.md#15`](file:///c:/Users/gimen/Downloads/analizador/ARQUITECTURA_Y_DISENO_SISTEMA.md#15-características) |
-| Informe de viabilidad | Cooperativa Agrícola San José Acatempa | 10/02/2026 | 15/03/2026 | F. Medrano (Investigador) | 12/03/2026 | [`core/soil_balance.py`](file:///c:/Users/gimen/Downloads/analizador/core/soil_balance.py) ($ET_a/ET_c \ge 0.90$) |
-| Recomendaciones | Asesores Técnicos de Campo | 15/02/2026 | 30/03/2026 | F. Medrano (Especialista) | 28/03/2026 | [`core/agronomy_economics.py`](file:///c:/Users/gimen/Downloads/analizador/core/agronomy_economics.py) & Dictamen PDF |
-| **MINERÍA DE DATOS** | | | | | | |
-| Fuentes de datos | Cátedra de Ciencia de Datos | 01/03/2026 | 15/03/2026 | F. Medrano (Data Engineer) | 14/03/2026 | Open-Meteo (ERA5 1981-2026), NOAA PSL (ENSO), MAGA |
-| Captura de datos | Equipo de Desarrollo Backend | 05/03/2026 | 25/03/2026 | F. Medrano (Backend Dev) | 22/03/2026 | [`core/data_fetcher.py`](file:///c:/Users/gimen/Downloads/analizador/core/data_fetcher.py) & [`core/maga_scraper.py`](file:///c:/Users/gimen/Downloads/analizador/core/maga_scraper.py) |
-| Almacenamiento de datos | Auditoría de Arquitectura de Datos | 10/03/2026 | 30/03/2026 | F. Medrano (Data Architect) | 28/03/2026 | Persistencia en `.cache/weather_*.csv` y memoria RAM |
-| **LIMPIEZA DE DATOS** | | | | | | |
-| Informes de inconsistencia | Equipo de Aseguramiento de Calidad (QA) | 15/03/2026 | 10/04/2026 | F. Medrano (QA Engineer) | 08/04/2026 | [`core/input_validator.py`](file:///c:/Users/gimen/Downloads/analizador/core/input_validator.py) (Geofencing & Anti-inyección) |
-| Seguimiento de los datos faltantes | Auditoría Estadística | 20/03/2026 | 15/04/2026 | F. Medrano (Data Scientist) | 12/04/2026 | Imputación temporal e interpolación en `data_fetcher.py` |
-| **EXPLORACIÓN DE DATOS** | | | | | | |
-| Análisis de datos | Dirección de Investigación | 01/04/2026 | 30/04/2026 | F. Medrano (Data Analyst) | 26/04/2026 | Análisis bimodal 45 años ERA5 y correlación ENSO |
-| Hipótesis de datos | Asesor Científico de Tesis | 05/04/2026 | 05/05/2026 | F. Medrano (Investigador) | 02/05/2026 | Modulación ENSO en canícula de Calderas, Jutiapa |
-| **INGENIERÍA DE FUNCIONES** | | | | | | |
-| Método de selección de funciones | Revisión de Modelado Predictivo | 15/04/2026 | 15/05/2026 | F. Medrano (ML Engineer) | 12/05/2026 | Matriz de correlación Spearman y gain en XGBoost |
-| Método de desarrollo de funciones | Arquitectura de Pipeline | 20/04/2026 | 20/05/2026 | F. Medrano (ML Engineer) | 18/05/2026 | 10 features agroclimáticas (`core/soil_balance.py`) |
-| **MODELADO PREDICTIVO** | | | | | | |
-| Métodos estadísticos | Tribunal Evaluador de Tesis | 01/05/2026 | 30/05/2026 | F. Medrano (ML Engineer) | 28/05/2026 | XGBoost v2.0+ (`hist`), Platt Scaling Calibrator |
-| Requisitos del modelo | Estándar ISO/IEC 25010 | 05/05/2026 | 05/06/2026 | F. Medrano (Lead Architect) | 01/06/2026 | `GroupKFold` 5 splits temporales (zero leakage) |
-| Evaluación del desempeño | Auditoría de Modelos | 15/05/2026 | 15/06/2026 | F. Medrano (Data Scientist) | 10/06/2026 | ROC-AUC (0.78), BSS (>0), Brier Score (0.16) |
-| Valor | Comunidad Agraria / Extensionistas | 20/05/2026 | 20/06/2026 | F. Medrano (Economista/Dev) | 18/06/2026 | Optimización ROI (28%-68%), prevención pérdidas Q |
-| **VISUALIZACIÓN DE DATOS** | | | | | | |
-| Plan de comunicación de las partes interesadas | Mesa Técnica Agroclimática (MTA) | 01/06/2026 | 30/06/2026 | F. Medrano (UX/UI & Front) | 25/06/2026 | Dashboard SPA, Canvas CAD, Chart.js, PDF Oficial |
-| **OTROS INFORMES** | | | | | | |
-| Plan de entrega | Gerencia de Proyecto | 10/06/2026 | 15/07/2026 | F. Medrano (Release Manager) | 12/07/2026 | Despliegue dual (On-Premise `server.py` + Vercel) |
-| Plan de capacitación y seguimiento | Extensionismo Rural Jutiapa | 15/06/2026 | 25/07/2026 | F. Medrano (Instructora) | 20/07/2026 | [`MANUAL_DE_USUARIO.md`](file:///c:/Users/gimen/Downloads/analizador/MANUAL_DE_USUARIO.md) (Guía TechSmith) |
-| Informe ad hoc | Comité de Emergencia Agrícola | 20/06/2026 | 30/07/2026 | F. Medrano (Analista) | 28/07/2026 | [`core/rain_streak_analyzer.py`](file:///c:/Users/gimen/Downloads/analizador/core/rain_streak_analyzer.py) (Monitoreo Canícula) |
-| Informe de cronograma | Dirección Académica UMG | 01/07/2026 | 15/08/2026 | F. Medrano (Planificadora) | 10/08/2026 | Ciclo fenológico 120d (Germ., Veg., Flor., Llenado) |
-| Informe de la API | Integración de Servicios | 10/07/2026 | 25/08/2026 | F. Medrano (API Architect) | 22/08/2026 | Endpoints `/api/analyze` y `/api/maga-price` JSON |
-| Documento de pruebas | Aseguramiento de Calidad (QA) | 15/07/2026 | 10/09/2026 | F. Medrano (Test Engineer) | 05/09/2026 | Pruebas de sanitización, física de suelos y estrés |
-
 ---
 
 ## 2. Arquitectura Global del Sistema

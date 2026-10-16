@@ -128,6 +128,12 @@ html {
   font-feature-settings: 'tnum' 1, 'cv05' 1;
 }
 
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
 body {
   font-family: var(--font-body);
   line-height: 1.6;
@@ -135,8 +141,23 @@ body {
   color: var(--text-primary);
   caret-color: var(--green-main);
   min-height: 100vh;
+  min-height: 100dvh;
   position: relative;
   overflow-x: hidden;
+}
+
+/* Optimización táctil y prevención de selección accidental en controles */
+button, a, [role="button"], .shape-btn, .capital-chip, .pdf-page-pill, .preset-chip, .loc-chip {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Prevención de auto-zoom en iOS Safari al tocar campos de formulario */
+@media (pointer: coarse), (max-width: 768px) {
+  input, textarea, select, .text-input-field {
+    font-size: 16px !important;
+  }
 }
 
 /* ==============================================================================
@@ -2221,7 +2242,8 @@ body {
 .table-wrap-clean {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   margin-bottom: 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
@@ -3383,8 +3405,9 @@ body {
 }
 
 /* ==============================================================================
-   RESPONSIVIDAD Y AJUSTES DE PANTALLA
+   RESPONSIVIDAD Y ADAPTACIÓN INTEGRAL PARA DISPOSITIVOS MÓVILES
    ============================================================================== */
+
 @media (max-width: 992px) {
   .hero-editorial-grid {
     grid-template-columns: 1fr;
@@ -3435,33 +3458,360 @@ body {
   }
 }
 
+@media (max-width: 768px) {
+  /* Barra de Navegación */
+  .top-navbar {
+    padding: 12px 16px;
+    padding-top: max(12px, env(safe-area-inset-top));
+    margin-bottom: 16px;
+  }
+  .nav-menu-links {
+    display: none;
+  }
+  .brand-sub {
+    display: none;
+  }
+  .brand-title {
+    font-size: 0.90rem;
+  }
+  .brand-emblem {
+    width: 28px;
+    height: 28px;
+    font-size: 0.74rem;
+  }
+  .brand-tech-badge {
+    font-size: 0.58rem;
+    padding: 1px 6px;
+  }
+  .nav-cta-btn {
+    padding: 7px 14px;
+    font-size: 0.76rem;
+  }
+
+  /* Carrusel Táctil */
+  .carousel-section {
+    padding: 40px 16px;
+  }
+  .carousel-track {
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+  }
+  .carousel-slide-card {
+    flex: 0 0 280px;
+    width: 280px;
+    scroll-snap-align: center;
+  }
+  .carousel-header-wrap {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .carousel-controls {
+    align-self: flex-end;
+  }
+
+  /* Hitos Fenológicos */
+  .milestones-section-kaax {
+    padding: 48px 16px;
+  }
+  .milestones-timeline-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  /* Workspace y Formulario */
+  #workspace {
+    padding: 36px 16px 48px 16px;
+  }
+  .workspace-panel {
+    padding: 20px 16px;
+  }
+  .panel-header-row h2 {
+    font-size: 1.15rem;
+  }
+  .panel-header-row p {
+    font-size: 0.80rem;
+  }
+  .shape-buttons-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .shape-btn {
+    padding: 12px 14px;
+    min-height: 48px;
+  }
+  .inputs-grid-2x2,
+  .inputs-grid-3,
+  .inputs-grid-2 {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .quick-chips-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .preset-chip {
+    font-size: 0.70rem;
+    padding: 6px 10px;
+    min-height: 36px;
+  }
+  .capital-chips-strip {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .capital-chip {
+    padding: 10px 6px;
+    font-size: 0.78rem;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .live-terrain-hud {
+    padding: 14px 12px;
+    margin-top: 14px;
+  }
+  .hud-metrics-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .live-terrain-sep {
+    width: 60px;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.12);
+    margin: 2px 0;
+  }
+  .btn-calculate-luxury {
+    padding: 14px 18px;
+    font-size: 0.96rem;
+    min-height: 52px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Estación de Revisión y Dictamen PDF */
+  .pdf-review-card {
+    border-radius: var(--radius-lg);
+  }
+  .pdf-review-header {
+    padding: 18px 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .pdf-review-title-group {
+    gap: 12px;
+  }
+  .pdf-review-title {
+    font-size: 1.05rem;
+  }
+  .pdf-review-subtitle {
+    font-size: 0.76rem;
+  }
+  .pdf-review-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 10px;
+  }
+  .btn-review-download,
+  .btn-review-print {
+    width: 100%;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 13px 18px;
+    font-size: 0.86rem;
+    min-height: 48px;
+  }
+  .pdf-review-subbar {
+    padding: 10px 14px;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .pdf-review-pills {
+    justify-content: center;
+    width: 100%;
+    gap: 6px;
+  }
+  .pdf-page-pill {
+    padding: 6px 10px;
+    font-size: 0.70rem;
+    flex: 1 1 auto;
+    text-align: center;
+    justify-content: center;
+    min-height: 36px;
+  }
+  .pdf-review-window-bar {
+    padding: 8px 12px;
+    font-size: 0.70rem;
+  }
+  .window-doc-title {
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.65rem;
+  }
+  .pdf-review-stage {
+    padding: 16px 8px;
+    gap: 18px;
+    max-height: 520px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .pdf-review-bottom-bar {
+    padding: 14px 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  #btnDownloadPdfBottom {
+    width: 100%;
+    justify-content: center;
+    min-height: 48px;
+  }
+
+  /* Sección Preguntas Frecuentes */
+  .faq-section-clean {
+    padding: 48px 16px;
+  }
+  .section-editorial-head {
+    margin-bottom: 24px;
+  }
+  .section-title {
+    font-size: 1.6rem;
+  }
+  .faq-list {
+    width: 100%;
+    max-width: 100%;
+    gap: 10px;
+  }
+  .faq-item {
+    width: 100%;
+    max-width: 100%;
+  }
+  .faq-question {
+    padding: 15px 16px;
+  }
+  .faq-question h3 {
+    font-size: 0.88rem;
+  }
+  .faq-answer {
+    padding: 0 16px 15px 16px;
+    font-size: 0.82rem;
+  }
+
+  /* Pie de Página */
+  .footer-clean {
+    padding: 48px 16px max(24px, calc(16px + env(safe-area-inset-bottom))) 16px;
+  }
+  .footer-top-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .footer-tagline {
+    max-width: 100%;
+  }
+}
+
 @media (max-width: 600px) {
+  /* Hero */
+  .hero-editorial-grid {
+    padding: 20px 14px 32px 14px;
+    gap: 18px;
+  }
+  .hero-heading {
+    font-size: 1.65rem;
+    line-height: 1.2;
+  }
+  .hero-lead-text {
+    font-size: 0.88rem;
+  }
+  .hero-photo-wrap {
+    height: 190px;
+  }
   .hero-stats-row {
     grid-template-columns: 1fr;
+    gap: 8px;
   }
+
+  /* Banner Semáforo y KPIs */
+  .semaforo-banner,
+  .finance-box-clean,
+  .bento-card-clean,
+  .chart-box-clean {
+    padding: 18px 14px;
+  }
+  .verdict-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .verdict-metric-cell {
+    padding: 10px 8px;
+  }
+  .verdict-metric-val {
+    font-size: 1.15rem;
+  }
+  .kpis-clean-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .kpi-tile-clean {
+    padding: 12px 10px;
+  }
+  .kpi-amount {
+    font-size: 1.25rem;
+  }
+  .density-tiles-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .canvas-holder {
+    height: 200px;
+  }
+  .water-chart-wrap {
+    height: 220px;
+  }
+  .decades-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .progress-steps-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .pdf-export-strip {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px;
+  }
+
+  /* Tablas Limpias en Pantallas Pequeñas */
+  .clean-data-table th,
+  .clean-data-table td {
+    padding: 9px 10px;
+    font-size: 0.76rem;
+    white-space: nowrap;
+  }
+  .clean-data-table th:first-child,
+  .clean-data-table td:first-child {
+    white-space: normal;
+    min-width: 120px;
+  }
+}
+
+@media (max-width: 380px) {
   .kpis-clean-grid {
     grid-template-columns: 1fr;
   }
   .verdict-metrics-grid {
     grid-template-columns: 1fr;
   }
-  .semaforo-banner,
-  .finance-box-clean {
-    padding: 20px 16px;
-  }
-  .progress-steps-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .shape-buttons-grid {
-    grid-template-columns: 1fr;
-  }
-  .pdf-export-strip {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
-  }
-  .top-navbar {
-    margin: 0 0 24px 0;
+  .brand-title {
+    font-size: 0.82rem;
   }
 }
 

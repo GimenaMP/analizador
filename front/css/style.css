@@ -2506,6 +2506,313 @@ body {
 }
 
 /* ==============================================================================
+   VENTANA DE REVISIÓN OFICIAL DEL DICTAMEN EN PDF (PREVIEW ANTES DE DESCARGAR)
+   ============================================================================== */
+.pdf-review-card {
+  width: 100%;
+  margin-top: 28px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+  display: none; /* Se activa dinámicamente al tener resultados */
+}
+
+.pdf-review-header {
+  padding: 24px 28px;
+  background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.pdf-review-title-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.pdf-review-icon-badge {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  color: #0284C7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pdf-review-tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #0284C7;
+  background: rgba(2, 132, 199, 0.1);
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-bottom: 4px;
+}
+
+.pdf-review-title {
+  font-family: var(--font-display);
+  font-size: 1.20rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.pdf-review-subtitle {
+  font-size: 0.80rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.pdf-review-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-review-download {
+  background: #0284C7;
+  color: #FFFFFF;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 12px 22px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btn-review-download:hover {
+  background: #0369A1;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(2, 132, 199, 0.35);
+  color: #FFFFFF;
+}
+
+.btn-review-print {
+  background: #F1F5F9;
+  color: #334155;
+  border: 1px solid #CBD5E1;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 11px 18px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.btn-review-print:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+.pdf-review-subbar {
+  padding: 12px 28px;
+  background: #F1F5F9;
+  border-bottom: 1px solid #E2E8F0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 0.78rem;
+}
+
+.pdf-review-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pdf-page-pill {
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pdf-page-pill:hover, .pdf-page-pill.active {
+  background: #0284C7;
+  color: #FFFFFF;
+  border-color: #0284C7;
+}
+
+.pdf-review-view-toggles {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pdf-toggle-btn {
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pdf-toggle-btn.active, .pdf-toggle-btn:hover {
+  background: #0F172A;
+  color: #FFFFFF;
+  border-color: #0F172A;
+}
+
+.pdf-review-window {
+  background: #0B1120;
+  border-top: 1px solid #1E293B;
+  position: relative;
+  overflow: hidden;
+}
+
+.pdf-review-window-bar {
+  background: #090D16;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #1E293B;
+  color: #94A3B8;
+  font-size: 0.75rem;
+}
+
+.window-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.window-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.window-dot.red { background: #EF4444; }
+.window-dot.yellow { background: #F59E0B; }
+.window-dot.green { background: #10B981; }
+
+.window-doc-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: #E2E8F0;
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pdf-review-stage {
+  max-height: 780px;
+  overflow-y: auto;
+  overflow-x: auto;
+  padding: 36px 20px;
+  background: radial-gradient(circle at 50% 20%, #1E293B 0%, #0B1120 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  scroll-behavior: smooth;
+}
+
+.pdf-review-sheet {
+  background: #FFFFFF;
+  width: 800px;
+  max-width: 100%;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  position: relative;
+  transition: transform 0.2s ease;
+  overflow: hidden;
+}
+
+.pdf-sheet-tag {
+  position: absolute;
+  top: 8px;
+  right: 14px;
+  background: #0F172A;
+  color: #94A3B8;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  z-index: 5;
+}
+
+.pdf-review-bottom-bar {
+  background: #090D16;
+  border-top: 1px solid #1E293B;
+  padding: 16px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.pdf-review-status-note {
+  font-size: 0.80rem;
+  color: #94A3B8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pdf-review-status-note strong {
+  color: #38BDF8;
+}
+
+@media (max-width: 860px) {
+  .pdf-review-header {
+    padding: 16px 18px;
+  }
+  .pdf-review-stage {
+    padding: 16px 8px;
+    gap: 20px;
+  }
+  .pdf-review-sheet {
+    transform-origin: top center;
+  }
+}
+
+/* ==============================================================================
    ACORDEÓN DE PREGUNTAS FRECUENTES (FAQ ESTILO APPLE / CROPLER)
    ============================================================================== */
 .faq-section-clean {

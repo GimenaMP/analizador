@@ -672,6 +672,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==============================================================================
 
   function renderResults(data) {
+    if (resultsSection) resultsSection.style.display = 'flex';
     const colorLower = (data.semaforo_color || 'Amarillo').toLowerCase();
     const probPct = (data.probabilidad * 100).toFixed(1);
 
@@ -999,11 +1000,17 @@ document.addEventListener('DOMContentLoaded', () => {
         printReportDirect(data);
       };
     }
+
+    // Desplegar e inicializar la Ventana de Revisión Oficial del Dictamen en PDF
+    setTimeout(() => {
+      renderPdfReview(data);
+    }, 150);
   }
 
   // Exponer para pruebas y acceso programático seguro
   window.renderResults = renderResults;
   window.downloadReportPDF = downloadReportPDF;
+  window.renderPdfReview = renderPdfReview;
   window.buildCleanPdfHtml = buildCleanPdfHtml;
 
   /**
@@ -1375,11 +1382,22 @@ document.addEventListener('DOMContentLoaded', () => {
   async function downloadReportPDF(data) {
     if (!data) return;
 
-    const btnText = btnDownloadPdf.querySelector('span');
-    const originalText = btnText ? btnText.textContent : 'Descargar Informe PDF';
+    const btnText = btnDownloadPdf ? btnDownloadPdf.querySelector('span') : null;
+    const originalText = btnText ? btnText.textContent : 'Descargar Dictamen PDF';
     if (btnText) btnText.textContent = 'Generando Dictamen PDF...';
-    btnDownloadPdf.style.pointerEvents = 'none';
-    btnDownloadPdf.style.opacity = '0.7';
+    if (btnDownloadPdf) {
+      btnDownloadPdf.style.pointerEvents = 'none';
+      btnDownloadPdf.style.opacity = '0.7';
+    }
+
+    const btnBottom = document.getElementById('btnDownloadPdfBottom');
+    const btnBottomText = btnBottom ? btnBottom.querySelector('span') : null;
+    const origBottomText = btnBottomText ? btnBottomText.textContent : 'Descargar PDF Oficial';
+    if (btnBottomText) btnBottomText.textContent = 'Generando Dictamen PDF...';
+    if (btnBottom) {
+      btnBottom.style.pointerEvents = 'none';
+      btnBottom.style.opacity = '0.7';
+    }
 
     // 1. Capturar imágenes fijas de ambos canvas en alta resolución
     let terrainImg = '';
@@ -1422,8 +1440,201 @@ document.addEventListener('DOMContentLoaded', () => {
       printReportDirect(data);
     } finally {
       if (btnText) btnText.textContent = originalText;
-      btnDownloadPdf.style.pointerEvents = 'auto';
-      btnDownloadPdf.style.opacity = '1';
+      if (btnDownloadPdf) {
+        btnDownloadPdf.style.pointerEvents = 'auto';
+        btnDownloadPdf.style.opacity = '1';
+      }
+      if (btnBottomText) btnBottomText.textContent = origBottomText;
+      if (btnBottom) {
+        btnBottom.style.pointerEvents = 'auto';
+        btnBottom.style.opacity = '1';
+      }
+    }
+  }
+
+  /**
+   * Ventana de Revisión Oficial y Vista Previa Interactiva del Dictamen en PDF.
+   * Renderiza el documento fiel en 3 hojas de alta resolución directamente en la pantalla
+   * para que el usuario pueda examinar cada sección antes de descargarlo o imprimirlo.
+   */
+  function renderPdfReview(data) {
+    if (!data) return;
+
+    const reviewCard = document.getElementById('pdfReviewCard');
+    if (reviewCard) {
+      reviewCard.style.display = 'block';
+      reviewCard.classList.add('is-settled');
+    }
+
+    const sheetsContainer = document.getElementById('pdfReviewDocumentSheets');
+    if (!sheetsContainer) return;
+    sheetsContainer.innerHTML = '';
+
+    // 1. Capturar capturas nítidas de los lienzos
+    let terrainImg = '';
+    let waterChartImg = '';
+    try {
+      const tc = document.getElementById('terrainCanvas');
+      if (tc && tc.width > 0) terrainImg = tc.toDataURL('image/png');
+      const wc = document.getElementById('waterChart');
+      if (wc && wc.width > 0) waterChartImg = wc.toDataURL('image/png');
+    } catch (err) {
+      console.warn('Canvas capture for PDF review preview:', err);
+    }
+
+    // 2. Construir el HTML limpio del dictamen oficial
+    const docHtml = buildCleanPdfHtml(data, terrainImg, waterChartImg);
+
+    // 3. Parsear y montar las 3 páginas en hojas visuales
+    const parser = document.createElement('div');
+    parser.innerHTML = docHtml;
+    const pages = parser.querySelectorAll('.pdf-page');
+
+    const pageLabels = [
+      'PÁGINA 1 • DICTAMEN OFICIAL & PARCELA',
+      'PÁGINA 2 • RACHAS FENOLÓGICAS & BALANCE HÍDRICO',
+      'PÁGINA 3 • P&L FINANCIERO & DESLINDE LEGAL'
+    ];
+
+    pages.forEach((pageEl, idx) => {
+      const pageNum = idx + 1;
+      const sheet = document.createElement('div');
+      sheet.className = 'pdf-review-sheet';
+      sheet.id = `pdfReviewSheet${pageNum}`;
+
+      // Etiqueta distintiva de página oficial
+      const tag = document.createElement('div');
+      tag.className = 'pdf-sheet-tag';
+      tag.textContent = pageLabels[idx] || `PÁGINA ${pageNum} DE 3`;
+      sheet.appendChild(tag);
+
+      // Limpiar estilos que puedan afectar el contenedor de revisión
+      pageEl.style.margin = '0 auto';
+      pageEl.style.boxShadow = 'none';
+      pageEl.style.minHeight = '1025px';
+      pageEl.style.background = '#FFFFFF';
+      sheet.appendChild(pageEl);
+
+      sheetsContainer.appendChild(sheet);
+    });
+
+    // 4. Conectar pills de navegación rápida
+    const pills = [
+      { pillId: 'pillPage1', sheetId: 'pdfReviewSheet1' },
+      { pillId: 'pillPage2', sheetId: 'pdfReviewSheet2' },
+      { pillId: 'pillPage3', sheetId: 'pdfReviewSheet3' }
+    ];
+
+    const stage = document.getElementById('pdfReviewStage');
+
+    pills.forEach(({ pillId, sheetId }) => {
+      const pill = document.getElementById(pillId);
+      if (pill) {
+        pill.onclick = (e) => {
+          e.preventDefault();
+          pills.forEach(p => {
+            const b = document.getElementById(p.pillId);
+            if (b) b.classList.remove('active');
+          });
+          pill.classList.add('active');
+
+          const targetSheet = document.getElementById(sheetId);
+          if (targetSheet && stage) {
+            const topOffset = targetSheet.offsetTop - stage.offsetTop - 14;
+            stage.scrollTo({ top: Math.max(0, topOffset), behavior: 'smooth' });
+          }
+        };
+      }
+    });
+
+    // Observador de scroll dentro de la ventana de visualización para iluminar las pills activas
+    if (stage) {
+      stage.onscroll = () => {
+        const stageScroll = stage.scrollTop;
+        let activeIdx = 0;
+        pills.forEach(({ sheetId }, idx) => {
+          const sheet = document.getElementById(sheetId);
+          if (sheet) {
+            const sheetTop = sheet.offsetTop - stage.offsetTop - 100;
+            if (stageScroll >= sheetTop) {
+              activeIdx = idx;
+            }
+          }
+        });
+        pills.forEach((p, idx) => {
+          const b = document.getElementById(p.pillId);
+          if (b) {
+            if (idx === activeIdx) b.classList.add('active');
+            else b.classList.remove('active');
+          }
+        });
+      };
+    }
+
+    // 5. Conmutador entre Vista de Hojas Fieles y Visor Nativo de PDF
+    const btnSheets = document.getElementById('btnViewDocumentSheets');
+    const btnIframe = document.getElementById('btnViewNativeIframe');
+    const iframeWrap = document.getElementById('pdfIframeWrap');
+    const previewIframe = document.getElementById('pdfPreviewIframe');
+
+    if (btnSheets && btnIframe && stage && iframeWrap) {
+      btnSheets.onclick = (e) => {
+        e.preventDefault();
+        btnSheets.classList.add('active');
+        btnIframe.classList.remove('active');
+        stage.style.display = 'flex';
+        iframeWrap.style.display = 'none';
+      };
+
+      btnIframe.onclick = async (e) => {
+        e.preventDefault();
+        btnIframe.classList.add('active');
+        btnSheets.classList.remove('active');
+        stage.style.display = 'none';
+        iframeWrap.style.display = 'block';
+
+        if (previewIframe && (!previewIframe.dataset.loaded || previewIframe.dataset.forDate !== (data.sowing_date || ''))) {
+          try {
+            if (typeof html2pdf !== 'undefined') {
+              const opt = {
+                margin: [0, 0, 0, 0],
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 1.5, useCORS: true, backgroundColor: '#FFFFFF' },
+                jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+              };
+              const blobUrl = await html2pdf().set(opt).from(docHtml).output('bloburl');
+              previewIframe.src = blobUrl;
+              previewIframe.dataset.loaded = 'true';
+              previewIframe.dataset.forDate = data.sowing_date || '';
+            }
+          } catch (err) {
+            console.warn('Iframe native preview fallback:', err);
+            btnSheets.click();
+          }
+        }
+      };
+    }
+
+    // 6. Botones de acción directa (Descarga e Impresión)
+    const downloadBtns = [
+      document.getElementById('btnDownloadPdf'),
+      document.getElementById('btnDownloadPdfBottom')
+    ];
+    downloadBtns.forEach(btn => {
+      if (btn) {
+        btn.onclick = (e) => {
+          e.preventDefault();
+          downloadReportPDF(data);
+        };
+      }
+    });
+
+    const printBtnReview = document.getElementById('btnPrintPdfDirectReview');
+    if (printBtnReview) {
+      printBtnReview.onclick = (e) => {
+        e.preventDefault();
+        printReportDirect(data);
+      };
     }
   }
 

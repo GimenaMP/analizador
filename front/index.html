@@ -973,27 +973,105 @@
           </p>
         </div>
 
-        <!-- BARRA FLOTANTE DE EXPORTACIÓN PDF -->
-        <div class="pdf-export-strip reveal-on-scroll from-bottom">
-          <div class="pdf-info-group">
-            <div class="pdf-icon-box">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <!-- VENTANA DE REVISIÓN OFICIAL DEL DICTAMEN EN PDF (REVIEW ANTES DE DESCARGAR) -->
+        <div class="pdf-review-card reveal-on-scroll from-bottom" id="pdfReviewCard">
+          
+          <!-- Encabezado de la Ventana de Revisión -->
+          <div class="pdf-review-header">
+            <div class="pdf-review-title-group">
+              <div class="pdf-review-icon-badge">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              </div>
+              <div>
+                <span class="pdf-review-tag">Vista Previa Oficial • 3 Páginas Ejecutivas</span>
+                <h3 class="pdf-review-title">Revisión del Dictamen Técnico en PDF</h3>
+                <p class="pdf-review-subtitle">Examine el dictamen completo antes de descargarlo o imprimirlo para su trámite agrícola o bancario.</p>
+              </div>
             </div>
-            <div>
-              <h4 class="pdf-title">Exportar Dictamen Técnico Completo en PDF</h4>
-              <p class="pdf-desc">Informe técnico con balance hídrico, estado de resultados y plano a escala para decisiones y crédito agrícola.</p>
+
+            <div class="pdf-review-actions">
+              <button type="button" class="btn-review-download" id="btnDownloadPdf">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Descargar Dictamen PDF</span>
+              </button>
+              <button type="button" class="btn-review-print" id="btnPrintPdfDirectReview">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                <span>Imprimir / Guardar</span>
+              </button>
             </div>
           </div>
-          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <a href="#" id="btnDownloadPdf" class="btn-pdf-download">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              <span>Descargar Informe PDF</span>
-            </a>
-            <button type="button" id="btnPrintPdfDirect" class="btn-pdf-print" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.22); border-radius: var(--radius-pill); padding: 11px 18px; color: #FFFFFF; font-size: 0.82rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-              <span>Imprimir / Guardar Navegador</span>
-            </button>
+
+          <!-- Barra de Navegación Rápida por Páginas y Opciones -->
+          <div class="pdf-review-subbar">
+            <div class="pdf-review-pills">
+              <span style="font-weight: 700; color: #475569; margin-right: 4px;">Saltar a:</span>
+              <button type="button" class="pdf-page-pill active" id="pillPage1">
+                <span>Pág. 1: Dictamen y Parcela</span>
+              </button>
+              <button type="button" class="pdf-page-pill" id="pillPage2">
+                <span>Pág. 2: Fenología y Lluvias</span>
+              </button>
+              <button type="button" class="pdf-page-pill" id="pillPage3">
+                <span>Pág. 3: Finanzas y Deslinde</span>
+              </button>
+            </div>
+
+            <div class="pdf-review-view-toggles">
+              <button type="button" class="pdf-toggle-btn active" id="btnViewDocumentSheets">
+                <span>Vista Hojas (Fiel)</span>
+              </button>
+              <button type="button" class="pdf-toggle-btn" id="btnViewNativeIframe">
+                <span>Visor Nativo PDF</span>
+              </button>
+            </div>
           </div>
+
+          <!-- Ventana de Visualización del Documento (Workstation Frame) -->
+          <div class="pdf-review-window">
+            
+            <div class="pdf-review-window-bar">
+              <div class="window-dots">
+                <span class="window-dot red"></span>
+                <span class="window-dot yellow"></span>
+                <span class="window-dot green"></span>
+              </div>
+              <div class="window-doc-title">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span>Dictamen_Agronomico_Calderas_San_Jose_Acatempa.pdf</span>
+              </div>
+              <div style="font-size: 0.70rem; color: #94A3B8;">
+                3 Páginas Carta • 800px Exactos
+              </div>
+            </div>
+
+            <!-- Escenario 1: Vista Hojas Fieles Renderizadas en Vivo -->
+            <div class="pdf-review-stage" id="pdfReviewStage">
+              <!-- Se poblará dinámicamente con las 3 hojas del documento oficial -->
+              <div id="pdfReviewDocumentSheets" style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 28px;"></div>
+            </div>
+
+            <!-- Escenario 2: Visor Nativo de PDF en Iframe (opcional conmutador) -->
+            <div id="pdfIframeWrap" style="display: none; width: 100%; height: 750px; background: #0B1120;">
+              <iframe id="pdfPreviewIframe" title="Visor Nativo PDF del Dictamen" style="width: 100%; height: 100%; border: none;"></iframe>
+            </div>
+
+            <!-- Barra Inferior de Acción Inmediata dentro de la Ventana -->
+            <div class="pdf-review-bottom-bar">
+              <div class="pdf-review-status-note">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Dictamen validado para <strong>Calderas, San José Acatempa, Jutiapa</strong>. ¿Desea conservar una copia formal?</span>
+              </div>
+
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <button type="button" class="btn-review-download" id="btnDownloadPdfBottom" style="padding: 10px 20px; font-size: 0.84rem;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  <span>Descargar PDF Oficial</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+
         </div>
 
       </div>

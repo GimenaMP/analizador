@@ -914,24 +914,6 @@ document.addEventListener('DOMContentLoaded', () => {
       sensitivityTableBody.appendChild(tr);
     });
 
-    // 6. Auditoría de Inversión y Límites Históricos
-    const capAuditText = document.getElementById('capitalAuditText');
-    const capWarningBanner = document.getElementById('capitalWarningBanner');
-    if (capAuditText) {
-      const capVal = f.capital_inversion_q;
-      const mzVal = terr.manzanas || 1.0;
-      const capMz = capVal / mzVal;
-      capAuditText.textContent = `Capital ingresado: Q ${capVal.toLocaleString(undefined, {minimumFractionDigits: 2})} (Equivalente a Q ${capMz.toLocaleString(undefined, {minimumFractionDigits: 2})}/mz para ${mzVal.toFixed(2)} mz). Rango histórico regional en el Corredor Seco: Q 2,000 - Q 25,000/mz. Entradas sanitizadas activamente con cero tolerancia a inyección y malversación.`;
-    }
-    if (capWarningBanner) {
-      if (data.capital_warnings && data.capital_warnings.length > 0) {
-        capWarningBanner.style.display = 'block';
-        capWarningBanner.textContent = data.capital_warnings[0];
-      } else {
-        capWarningBanner.style.display = 'none';
-      }
-    }
-
     // 7. Evaluación de Rachas Hídricas por Etapa Fenológica
     const streakData = data.rain_streak_report;
     const streakSection = document.getElementById('streakBoxSection');

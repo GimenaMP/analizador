@@ -4,6 +4,7 @@
 **Documento:** Manual Técnico de Arquitectura de Software y Modelado Agroclimático  
 **Versión:** 2.6.0  
 **Fecha:** Octubre 2026  
+**Repositorio Oficial de Código Fuente:** [https://github.com/GimenaMP/analizador.git](https://github.com/GimenaMP/analizador)  
 **Ámbito Geográfico Exclusivo:** Calderas, San José Acatempa, Jutiapa, Guatemala  
 **Coordenadas Delimitadas:** Latitud 14.240° N a 14.290° N, Longitud -90.160° W a -90.110° W  
 **Cultivo Específico:** Maíz Blanco de Primera (*Zea mays L.*)  
@@ -527,19 +528,31 @@ Utiliza la biblioteca ReportLab en Python para generar documentos PDF vectoriale
 
 ## 8. Guía de Ejecución y Pruebas del Sistema
 
-### 1. Iniciar Servidor Web Local
+### 1. Clonación y Acceso al Repositorio Oficial
+El código fuente íntegro del sistema, junto con los modelos agrometeorológicos, scripts de balance hídrico y el servidor multihilo, se encuentra alojado públicamente para revisión de pares y evaluación académica en:
+
+* **URL del Repositorio Oficial (GitHub):** [https://github.com/GimenaMP/analizador.git](https://github.com/GimenaMP/analizador)
+
+Para clonar e instalar las dependencias requeridas localmente:
+```bash
+git clone https://github.com/GimenaMP/analizador.git
+cd analizador
+pip install -r requirements.txt
+```
+
+### 2. Iniciar Servidor Web Local
 ```bash
 python server.py 8000
 ```
 La aplicación quedará disponible en `http://localhost:8000`.
 
-### 2. Ejecutar Análisis desde Consola (Headless CLI)
+### 3. Ejecutar Análisis desde Consola (Headless CLI)
 ```bash
 python main.py --date 2026-06-01 --lat 14.267 --lon -90.133 --width 100 --length 70 --capital 7200
 ```
 Los resultados y el archivo PDF se escribirán en el directorio `output/`.
 
-### 3. Verificar Sanitización y Manejo de Errores
+### 4. Verificar Sanitización y Manejo de Errores
 El sistema responde con código HTTP 400 y mensaje en formato JSON si se suministran coordenadas fuera de Calderas, Jutiapa:
 ```bash
 curl -X POST http://localhost:8000/api/analyze \

@@ -25,3 +25,6 @@ scratch/
 agent/
 .gemini/
 .claude/
+front/*skill*
+front/skiils/
+skills-lock.json

@@ -3,6 +3,10 @@
 
 **Documento:** Manual Oficial de Operación y Procedimientos de Usuario  
 **Versión de la Aplicación:** 2.6.0  
+**Fecha de Edición:** Octubre 2026  
+**Repositorio Oficial de Código Fuente:** [https://github.com/GimenaMP/analizador.git](https://github.com/GimenaMP/analizador)  
+**Documento Técnico de Arquitectura:** [`DOCUMENTACION_TECNICA.md`](file:///c:/Users/gimen/Downloads/analizador/DOCUMENTACION_TECNICA.md) | PDF: [`docs/DOCUMENTACION_TECNICA.pdf`](file:///c:/Users/gimen/Downloads/analizador/docs/DOCUMENTACION_TECNICA.pdf)  
+**Diagramas Nativos Editables:** Colección Draw.io en [`docs/diagrams/`](file:///c:/Users/gimen/Downloads/analizador/docs/diagrams/)  
 **Audiencia Objetivo:** Agricultores de pequeña escala, productores de granos básicos, técnicos de extensión rural del MAGA, cooperativas agrícolas y analistas de crédito rural  
 **Región de Operación:** Aldea Calderas, San José Acatempa, Departamento de Jutiapa, Guatemala  
 **Tipo de Cultivo:** Maíz Blanco de Primera (*Zea mays L.*)  
@@ -67,6 +71,16 @@ Para obtener los mejores resultados, tenga a mano la siguiente información bás
 3. **Monto de dinero propio que invertirá en el ciclo:**
    * Por ejemplo: Q 5,000.00, Q 7,200.00 o Q 10,000.00 (el costo total contemplado para semillas, preparación de tierra, abono y corte).
 4. **Dispositivo:** Teléfono inteligente, tableta o computadora con navegador web moderno (Google Chrome, Microsoft Edge, Safari o Mozilla Firefox).
+5. **Modalidades de Acceso al Sistema:**
+   * **Acceso Web Directo:** Mediante navegador web sin necesidad de instalación de software.
+   * **Instalación Local para Técnicos y Extensionistas:** Para técnicos del MAGA y cooperativas que operan en zonas rurales con conectividad intermitente, el código fuente completo puede clonarse del repositorio oficial de GitHub:
+     ```bash
+     git clone https://github.com/GimenaMP/analizador.git
+     cd analizador
+     pip install -r requirements.txt
+     python server.py 8000
+     ```
+     La aplicación almacena automáticamente en caché local (`.cache/`) las series climáticas históricas, permitiendo consultas instantáneas.
 
 ---
 
@@ -92,7 +106,7 @@ Siga estos cuatro pasos ordenados para efectuar su proyección agronómica:
 flowchart LR
     A["1. Elegir Forma y Medir Linderos"] --> B["2. Seleccionar Fecha de Siembra"]
     B --> C["3. Indicar Capital en Quetzales"]
-    C --> D["4. Presionar 'Ejecutar Análisis'"]
+    C --> D["4. Presionar 'Calcular Viabilidad Agronómica'"]
     D --> E["5. Evaluar Semáforo y Descargar PDF"]
 ```
 
@@ -100,21 +114,27 @@ flowchart LR
 
 ### Paso 1: Modelado Geométrico de la Parcela (Linderos)
 
-En el panel izquierdo titulado **"1. Geometría y Dimensiones de la Parcela"**:
+En el panel izquierdo titulado **"1. Geometría y Linderos de la Parcela"**:
 
 1. **Seleccione la forma de su terreno:**
-   * Haga clic en una de las tres pestañas disponibles:
-     * **Cuadrilátero (4 Lados):** Para terrenos de campo tradicionales con cuatro costados desiguales.
+   * Haga clic en una de las tres opciones disponibles:
+     * **4 Lados (Irregular):** Para terrenos de campo tradicionales con cuatro costados desiguales.
      * **Triángulo (3 Lados):** Para esquinas de calle, laderas o predios en forma de cuña.
-     * **Rectángulo:** Para lotes regulares con ancho y largo parejos.
+     * **Rectángulo (Regular):** Para lotes regulares con ancho y largo parejos.
 
-2. **Ingrese la longitud de cada lindero en metros ($m$):**
-   * *Si eligió Cuadrilátero:* Ingrese los valores de Lado Norte, Lado Este, Lado Sur y Lado Oeste.
+2. **Atajos Rápidos de un Clic:**
+   Para mayor agilidad, puede pulsar cualquiera de los botones de plantilla prediseñados:
+   * `1 Manzana • 84 × 84 m`
+   * `1 Cuerda • 20 × 20 m`
+   * `Lote Irregular`
+
+3. **Ingrese la longitud de cada lindero en metros ($m$):**
+   * *Si eligió 4 Lados:* Ingrese los valores de Lado Norte (N), Lado Este (E), Lado Sur (S) y Lado Oeste (O).
    * *Si eligió Triángulo:* Ingrese Lindero A, Lindero B y Lindero C.
    * *Si eligió Rectángulo:* Ingrese el Ancho y el Largo.
 
-3. **Verifique la barra interactiva de superficie (HUD en vivo):**
-   A medida que escribe los números, la barra inferior calcula instantáneamente:
+4. **Verifique la barra interactiva de superficie (HUD en vivo):**
+   A medida que escribe los números, la barra flotante inferior calcula instantáneamente:
    * **Área Métrica:** En metros cuadrados ($m^2$).
    * **Superficie Agraria:** En manzanas ($mz$), calculada bajo la norma guatemalteca ($1\text{ mz} = 7,000\text{ m}^2$).
    * **Perímetro Total:** La suma total de linderos en metros ($m$).
@@ -128,12 +148,12 @@ En el panel izquierdo titulado **"1. Geometría y Dimensiones de la Parcela"**:
 
 En el panel derecho titulado **"2. Fecha de Siembra y Capital Invertido"**:
 
-1. Haga clic en el campo **"Fecha Tentativa de Siembra"** para abrir el calendario.
-2. Elija el día, mes y año en que planifica depositar la semilla en el suelo.
-3. Observe la etiqueta informativa que aparece al lado del título:
+1. Haga clic en el campo **"Fecha Tentativa de Siembra"** para abrir el calendario interactivo.
+2. Elija el día, mes y año en que planifica depositar la semilla en el suelo (Rango admitido: `01/05/2024` al `31/10/2026`).
+3. Observe la insignia reactiva que categoriza la fecha:
    * **Época de Primera:** Para siembras entre mayo y julio.
    * **Época de Postrera:** Para siembras entre agosto y octubre.
-   * **Fuera de Temporada:** Si selecciona fechas de verano/estiaje (noviembre a abril).
+   * **Fuera de Temporada:** Si selecciona fechas de verano o estiaje (noviembre a abril).
 
 ---
 
@@ -152,12 +172,12 @@ En el panel derecho titulado **"2. Fecha de Siembra y Capital Invertido"**:
 ### Paso 4: Activación del Motor Agrometeorológico
 
 1. Revise que los datos ingresados sean correctos.
-2. Presione el botón verde principal: **"Ejecutar Análisis de Viabilidad"**.
-3. En pantalla observará una barra de progreso en 4 etapas:
-   * `Fase 1/4:` Conexión satelital y descarga de clima diario ERA5.
-   * `Fase 2/4:` Análisis de índices oceánicos globales ENSO (NOAA).
-   * `Fase 3/4:` Simulación del balance hídrico del suelo (FAO-56).
-   * `Fase 4/4:` Inferencia predictiva de aprendizaje automático y proyección financiera.
+2. Presione el botón principal: **"Calcular Viabilidad Agronómica"**.
+3. En pantalla observará la tarjeta de progreso dinámico en 4 pasos:
+   * `Paso 1: Clima ERA5` (Consulta al archivo satelital de reanálisis ERA5 de Open-Meteo).
+   * `Paso 2: Índices ENSO` (Análisis de teleconexiones macroclimáticas NOAA PSL: MEI v2 y Niño 3.4).
+   * `Paso 3: Suelo Saxton` (Modelación física Saxton & Rawls y balance hídrico continuo FAO-56).
+   * `Paso 4: Inferencia ML` (Ejecución del modelo XGBoost calibrado y proyección económica P&L).
 4. El cálculo toma habitualmente entre 1 y 3 segundos. Al terminar, la pantalla se desplazará suavemente hacia la sección de resultados.
 
 ---
@@ -347,6 +367,10 @@ Para que las proyecciones tengan la máxima certeza agronómica y financiera, to
 
 ## 10. Documentos de Referencia del Proyecto
 
-* [DOCUMENTACION_TECNICA.md](file:///c:/Users/gimen/Downloads/analizador/DOCUMENTACION_TECNICA.md): Arquitectura de software, fórmulas matemáticas y especificaciones de código.
-* [DERCAS.md](file:///c:/Users/gimen/Downloads/analizador/DERCAS.md): Matriz de requerimientos de software y criterios formales de aceptación.
-* [README.md](file:///c:/Users/gimen/Downloads/analizador/README.md): Instrucciones de instalación del código fuente y comandos de consola.
+* **Repositorio Oficial (GitHub):** [https://github.com/GimenaMP/analizador.git](https://github.com/GimenaMP/analizador)
+* **Expediente Técnico de Arquitectura:** [`DOCUMENTACION_TECNICA.md`](file:///c:/Users/gimen/Downloads/analizador/DOCUMENTACION_TECNICA.md)
+* **Documentación Técnica en PDF (Vectorial):** [`docs/DOCUMENTACION_TECNICA.pdf`](file:///c:/Users/gimen/Downloads/analizador/docs/DOCUMENTACION_TECNICA.pdf)
+* **Diseño del Sistema y Diagramas UML:** [`ARQUITECTURA_Y_DISENO_SISTEMA.md`](file:///c:/Users/gimen/Downloads/analizador/ARQUITECTURA_Y_DISENO_SISTEMA.md)
+* **Diagramas Nativos Editables (Draw.io):** Carpeta [`docs/diagrams/`](file:///c:/Users/gimen/Downloads/analizador/docs/diagrams/)
+* **Matriz de Requerimientos y Casos de Aceptación:** [`DERCAS.md`](file:///c:/Users/gimen/Downloads/analizador/DERCAS.md)
+* **Guía de Instalación y Comandos de Consola:** [`README.md`](file:///c:/Users/gimen/Downloads/analizador/README.md)

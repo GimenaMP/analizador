@@ -1,19 +1,21 @@
+[Visualizar documentación técnica](https://mintlify.wiki/GimenaMP/analizador/introduction)
+
 # AGRO-JUTIAPA: Sistema Abierto de Viabilidad Agrícola y Proyección Agrometeorológica
 
-Plataforma agrometeorológica y de proyección financiera para la evaluación probabilística de viabilidad en la siembra de **Maíz Blanco de Primera** en **Calderas, San José Acatempa, Jutiapa (Guatemala)** y regiones vulnerables del Corredor Seco oriental.
+Plataforma agrometeorológica y de proyección financiera para la evaluación probabilística de viabilidad en la siembra de **Maíz Blanco de Primera** en **Calderas, San José Acatempa, Jutiapa ([...]
 
-El sistema opera bajo un modelo de **acceso abierto y universal** (sin requerir autenticación, contraseñas ni roles), activando el motor predictivo y calculando dinámicamente todos los balances hídricos y estados financieros en tiempo real ante cada consulta del productor.
+El sistema opera bajo un modelo de **acceso abierto y universal** (sin requerir autenticación, contraseñas ni roles), activando el motor predictivo y calculando dinámicamente todos los balances [...]
 
 ---
 
 ## 🌾 Características Principales
 
 * **Ingesta Meteorológica Automatizada (1981 - Presente):**
-  * Clima diario de reanálisis satelital **ERA5** vía **Open-Meteo Archive API** (Precipitación diaria acumulada, Evapotranspiración de referencia Penman-Monteith $ET_0$, Temperatura media a 2m).
+  * Clima diario de reanálisis satelital **ERA5** vía **Open-Meteo Archive API** (Precipitación diaria acumulada, Evapotranspiración de referencia Penman-Monteith $ET_0$, Temperatura media a 2[...]
   * Índices macroclimáticos globales ENSO (**MEI v2** y **Niño 3.4**) descargados directamente desde **NOAA Physical Sciences Laboratory (PSL)**.
   * Sistema de caché local (`.cache/`) y memoria en ejecución con reintentos exponenciales (*exponential backoff*).
 * **Física de Suelos y Balance Hídrico Continuo (FAO-56):**
-  * Estimación de capacidad de campo ($\theta_{FC}$), punto de marchitez ($\theta_{WP}$), agua total disponible ($TAW$) y agua fácilmente aprovechable ($RAW$) mediante ecuaciones de pedotransferencia de **Saxton & Rawls (2006)** calibradas para el perfil edáfico de Jutiapa (26% Arcilla, 52% Arena, 1.8% Materia Orgánica).
+  * Estimación de capacidad de campo ($\theta_{FC}$), punto de marchitez ($\theta_{WP}$), agua total disponible ($TAW$) y agua fácilmente aprovechable ($RAW$) mediante ecuaciones de pedotransfer[...]
   * Simulación continua tipo cubo (*bucket*) con seguimiento diario de estrés hídrico ($K_s$), evapotranspiración real ($ET_a$) y detección de anegamiento radicular.
 * **Análisis de Rachas y Distribución Fenológica (120 Días):**
   * Monitoreo especializado a lo largo de las 4 etapas del maíz:
@@ -186,7 +188,7 @@ Ejecuta el análisis agrometeorológico, balance hídrico, geometría de la parc
 }
 ```
 * **Respuesta Exitosa (JSON):**
-Contiene la probabilidad calibrada, clasificación del semáforo, fase ENSO, geometría del terreno ($m^2, mz, ha$), recomendaciones de densidad, estado P&L detallado, análisis de sensibilidad, serie temporal del balance hídrico y reporte fenológico de rachas.
+Contiene la probabilidad calibrada, clasificación del semáforo, fase ENSO, geometría del terreno ($m^2, mz, ha$), recomendaciones de densidad, estado P&L detallado, análisis de sensibilidad, [...]
 
 ### `GET /api/maga-price`
 Retorna el precio mayorista del maíz blanco de primera obtenido en tiempo real desde el portal oficial del MAGA.
@@ -207,7 +209,7 @@ Retorna el precio mayorista del maíz blanco de primera obtenido en tiempo real 
 
 ## 📚 Documentación Técnica Detallada
 
-Para consultar la fundamentación matemática completa, las ecuaciones de Saxton & Rawls, la arquitectura de capas, el diseño del validador de entradas y las especificaciones de software, consulte:
+Para consultar la fundamentación matemática completa, las ecuaciones de Saxton & Rawls, la arquitectura de capas, el diseño del validador de entradas y las especificaciones de software, consul[...]
 * [DOCUMENTACION_TECNICA.md](file:///c:/Users/gimen/Downloads/analizador/DOCUMENTACION_TECNICA.md): Manual técnico exhaustivo de la arquitectura de software.
 * [DERCAS.md](file:///c:/Users/gimen/Downloads/analizador/DERCAS.md): Documento de Requerimientos y Criterios de Aceptación.
 

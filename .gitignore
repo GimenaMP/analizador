@@ -28,3 +28,8 @@ agent/
 front/*skill*
 front/skiils/
 skills-lock.json
+
+# Node / Astro
+node_modules/
+dist/
+.astro/

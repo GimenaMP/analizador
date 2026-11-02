@@ -524,8 +524,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (inputSowingDate) {
     inputSowingDate.addEventListener('change', () => {
-      if (inputSowingDate.value > '2030-12-31') inputSowingDate.value = '2030-12-31';
-      if (inputSowingDate.value < '1981-01-01') inputSowingDate.value = '1981-01-01';
+      if (inputSowingDate.value > '2027-03-31') inputSowingDate.value = '2027-03-31';
+      if (inputSowingDate.value < '2024-05-01') inputSowingDate.value = '2024-05-01';
       updateSeasonBadge(inputSowingDate.value);
     });
     updateSeasonBadge(inputSowingDate.value);

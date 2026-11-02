@@ -22,8 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
     producto: "Maíz blanco, de primera",
     mercado: "La Terminal",
     medida: "Quintal",
-    precio: 235.0,
-    fecha: "09/10/2026",
+    precio: 200.0,
+    fecha: "30/10/2026",
     fuente: "MAGA SIMPA Precios Mayoristas (La Terminal)"
   };
 
@@ -36,12 +36,14 @@ document.addEventListener('DOMContentLoaded', () => {
           liveMagaData = data;
           const heroStat = document.getElementById('heroMagaPriceStat');
           if (heroStat) heroStat.textContent = `Q ${data.precio.toFixed(2)}`;
-          if (magaDateBadge) magaDateBadge.textContent = data.fecha;
-          if (magaPriceBadge) magaPriceBadge.textContent = `Q ${data.precio.toFixed(2)} por quintal`;
+          const dBadge = document.getElementById('magaDateBadge');
+          if (dBadge) dBadge.textContent = data.fecha;
+          const pBadge = document.getElementById('magaPriceBadge');
+          if (pBadge) pBadge.textContent = `Q ${data.precio.toFixed(2)} por quintal`;
         }
       }
     } catch (e) {
-      // Si la API remota está offline, se conserva el valor verificado
+      console.warn('MAGA Live Scraper fallback:', e);
     }
   }
   initLiveMagaPrice();
@@ -803,7 +805,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ingBruto = Number(f.ingreso_bruto_q || 0);
     const utNeta = Number(f.utilidad_neta_q || 0);
     const roiVal = Number(f.roi_pct || 0);
-    const precMaga = Number(f.precio_maga_qq || 235);
+    const precMaga = Number(f.precio_maga_qq || 200);
     const prodQq = Number(f.produccion_total_estimada_qq || 0);
     const rendMz = Number(f.rendimiento_estimado_qq_mz || 0);
     const ptEq = Number(f.punto_equilibrio_qq || 0);
@@ -1075,7 +1077,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Variables base calculadas directamente de las entradas del usuario
     const userMz = Number(terr.manzanas || 1.0);
     const userCap = Number(f.capital_inversion_q || 7200);
-    const magaPrice = Number(f.precio_maga_qq || (liveMagaData.precio || 235.0));
+    const magaPrice = Number(f.precio_maga_qq || (liveMagaData.precio || 200.0));
 
     // Rendimiento proyectado oficial (RF-07)
     const factorRend = 0.40 + 0.60 * probVal;
@@ -2057,7 +2059,7 @@ document.addEventListener('DOMContentLoaded', () => {
       directiva_agronomica: accion
     };
 
-    const precioMAGA = liveMagaData.precio || 235.0;
+    const precioMAGA = liveMagaData.precio || 200.0;
     const factorRend = 0.40 + 0.60 * probCalculada;
     const rendQqMz = +(65.0 * factorRend).toFixed(1);
     const prodQq = +(rendQqMz * mz).toFixed(1);
@@ -2098,7 +2100,7 @@ document.addEventListener('DOMContentLoaded', () => {
       },
       financiero: {
         fuente_oficial_maga: liveMagaData.fuente || 'MAGA SIMPA Precios Mayoristas (La Terminal)',
-        fecha_actualizacion_maga: liveMagaData.fecha || '09/10/2026',
+        fecha_actualizacion_maga: liveMagaData.fecha || '30/10/2026',
         tipo_maiz: 'Blanco (de primera)',
         precio_maga_qq: precioMAGA,
         area_manzanas: +mz.toFixed(3),

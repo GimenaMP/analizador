@@ -84,17 +84,17 @@ class MacroClimateConfig:
         return list(self.features_local + self.features_enso)
 
 
-@dataclass(frozen=True)
+@dataclass
 class MagaPriceConfig:
     """
     Precios oficiales de mercado de granos básicos en Guatemala.
     Fuente: Ministerio de Agricultura, Ganadería y Alimentación (MAGA) - DIPLAN / SIMPA.
     """
     fuente_oficial: str = "MAGA - DIPLAN / SIMPA (Mercado Mayorista La Terminal)"
-    fecha_actualizacion: str = "2026-10-09"
+    fecha_actualizacion: str = "2026-10-30"
     
     # Precios de referencia por quintal (qq) en Quetzales (Q)
-    precio_qq_maiz_blanco: float = 235.0
+    precio_qq_maiz_blanco: float = 200.0
     
     # Costos promedio de producción de maíz tradicional/tecnificado por manzana (Q/mz)
     costo_preparacion_suelo_mz: float = 650.0

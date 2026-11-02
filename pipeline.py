@@ -334,13 +334,23 @@ class AgroViabilityPipeline:
         # 7. Proyección Financiera con Precios Oficiales MAGA (RF-07)
         # Actualización automática mediante scraper oficial del MAGA (La Terminal)
         try:
-            live_maga = fetch_maga_white_corn_price(timeout_sec=3)
+            live_maga = fetch_maga_white_corn_price(timeout_sec=5)
             if live_maga and live_maga.get("precio"):
-                self.maga_cfg.precio_qq_maiz_blanco = float(live_maga["precio"])
-                self.maga_cfg.fecha_actualizacion = str(live_maga.get("fecha", "09/10/2026"))
-                self.maga_cfg.fuente_oficial = f"MAGA DIPLAN - Precios Diarios ({live_maga.get('mercado', 'La Terminal')})"
-        except Exception:
-            pass
+                self.maga_cfg = MagaPriceConfig(
+                    fuente_oficial=f"MAGA DIPLAN - Precios Diarios ({live_maga.get('mercado', 'La Terminal')})",
+                    fecha_actualizacion=str(live_maga.get("fecha", "30/10/2026")),
+                    precio_qq_maiz_blanco=float(live_maga["precio"]),
+                    costo_preparacion_suelo_mz=self.maga_cfg.costo_preparacion_suelo_mz,
+                    costo_semilla_mz=self.maga_cfg.costo_semilla_mz,
+                    costo_fertilizacion_mz=self.maga_cfg.costo_fertilizacion_mz,
+                    costo_control_plagas_malezas_mz=self.maga_cfg.costo_control_plagas_malezas_mz,
+                    costo_mano_obra_labores_mz=self.maga_cfg.costo_mano_obra_labores_mz,
+                    costo_cosecha_desgrane_mz=self.maga_cfg.costo_cosecha_desgrane_mz,
+                    rendimiento_base_qq_mz=self.maga_cfg.rendimiento_base_qq_mz
+                )
+                print(f"  [MAGA Live] Precio oficial actualizado en vivo: Q{self.maga_cfg.precio_qq_maiz_blanco:.2f}/qq al {self.maga_cfg.fecha_actualizacion}")
+        except Exception as e:
+            print(f"  [MAGA Aviso] Usando precio de referencia MAGA: {e}")
 
         financiero = calculate_financial_projection(
             terrain=terrain,

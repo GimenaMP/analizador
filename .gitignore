@@ -33,3 +33,6 @@ skills-lock.json
 node_modules/
 dist/
 .astro/
+
+# Documentos locales privados
+*.docx

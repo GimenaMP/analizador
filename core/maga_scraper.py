@@ -24,8 +24,8 @@ FALLBACK_PRICE_DATA = {
     "producto": "Maíz blanco, de primera",
     "mercado": "La Terminal",
     "medida": "Quintal",
-    "precio": 235.00,
-    "fecha": "09/10/2026",
+    "precio": 200.00,
+    "fecha": "30/10/2026",
     "fuente": "MAGA Guatemala - Precios Diarios de Mercados Mayoristas",
     "estado": "fallback"
 }

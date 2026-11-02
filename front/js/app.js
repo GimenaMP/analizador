@@ -523,12 +523,39 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (inputSowingDate) {
+    // 1. Detección automática en tiempo real de la fecha actual
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+
+    // Cargar automáticamente la fecha actual del sistema como valor por defecto
+    inputSowingDate.value = todayStr;
+
+    // 2. Límite máximo: exactamente los 5 meses que proyecta el algoritmo hacia adelante
+    const maxFuture = new Date(now);
+    maxFuture.setMonth(maxFuture.getMonth() + 5);
+    const maxY = maxFuture.getFullYear();
+    const maxM = String(maxFuture.getMonth() + 1).padStart(2, '0');
+    const maxD = String(maxFuture.getDate()).padStart(2, '0');
+    const maxDateStr = `${maxY}-${maxM}-${maxD}`;
+
+    inputSowingDate.min = '2024-05-01';
+    inputSowingDate.max = maxDateStr;
+
+    const hintEl = document.querySelector('.form-unit .field-hint');
+    if (hintEl) {
+      hintEl.textContent = `Fecha de hoy: ${todayStr} • Rango proyectable por el algoritmo: hasta ${maxDateStr} (5 meses hacia adelante).`;
+    }
+
     inputSowingDate.addEventListener('change', () => {
-      if (inputSowingDate.value > '2027-03-31') inputSowingDate.value = '2027-03-31';
+      if (inputSowingDate.value > maxDateStr) inputSowingDate.value = maxDateStr;
       if (inputSowingDate.value < '2024-05-01') inputSowingDate.value = '2024-05-01';
       updateSeasonBadge(inputSowingDate.value);
     });
-    updateSeasonBadge(inputSowingDate.value);
+
+    updateSeasonBadge(todayStr);
   }
 
   // Chips de Capital

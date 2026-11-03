@@ -889,9 +889,7 @@ document.addEventListener('DOMContentLoaded', () => {
     verdictTitle.textContent = rawState;
     verdictProb.textContent = `${probPct}% de Viabilidad Climática`;
     verdictEnso.textContent = `Fase Climática: ${(data.fase_enso || 'Neutral').replace(/[()]/g, '').replace(/\s*\/\s*/g, ' o ')}`;
-    verdictAction.textContent = (data.semaforo_accion || '')
-      .replace(/[()]/g, '')
-      .replace(/\s*\/\s*/g, ' o ');
+    verdictAction.textContent = data.semaforo_accion || '';
 
     // Validación Histórica Ex-Post
     const histBox = document.getElementById('historicalValidationBox');
@@ -2135,10 +2133,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const s4Dry = getLongestStreak(p120.slice(75, 120), v => v < 1.5);
     const s4Wet = getLongestStreak(p120.slice(75, 120), v => v > 15.0);
 
+    const s3Start = new Date(sDate.getTime() + 55 * 24 * 60 * 60 * 1000);
+    const s3End = new Date(sDate.getTime() + 74 * 24 * 60 * 60 * 1000);
+    const s3StartStr = s3Start.toLocaleDateString('es-GT', { day: 'numeric', month: 'short' });
+    const s3EndStr = s3End.toLocaleDateString('es-GT', { day: 'numeric', month: 'short' });
+
     const criticalAlerts = [];
     if (s1Dry > 7) criticalAlerts.push("Falla crítica en Germinación (Etapa 1): >7 días continuos sin lluvia (<1 mm/día). Desecación de semilla.");
     if (s1Wet > 5) criticalAlerts.push("Falla crítica en Germinación (Etapa 1): >5 días continuos con lluvia torrencial (>15 mm/día). Pudrición de simiente por anoxia.");
-    if (s3Dry > 4) criticalAlerts.push(`Falla letal en Floración (Etapa 3 - CRÍTICA): ${s3Dry} días continuos con lluvia <2 mm/día. Desecación de polen y estigmas.`);
+    if (s3Dry > 4) criticalAlerts.push(`Falla letal en Floración (Etapa 3 del ${s3StartStr} al ${s3EndStr}): ${s3Dry} días continuos con lluvia < 2.0 mm/día. En este período las lluvias en Jutiapa ya finalizaron (inicio de época seca), provocando desecación letal de polen y estigmas (jilotes vacíos sin grano).`);
     if (s2Dry > 10) criticalAlerts.push(`Falla en Desarrollo Vegetativo (Etapa 2): ${s2Dry} días secos continuos. Enanismo y retraso de masa foliar.`);
 
     const total120Rain = +(p120.reduce((a, b) => a + b, 0)).toFixed(1);
@@ -2152,7 +2155,7 @@ document.addEventListener('DOMContentLoaded', () => {
       probCalculada = Math.min(probCalculada, 0.35);
       estado = 'NO SEMBRAR';
       color = 'Rojo';
-      accion = `DICTAMEN ADVERSO (Fallo Fenológico): ${criticalAlerts[0]} No se recomienda siembra a temporal en Calderas.`;
+      accion = `DICTAMEN ADVERSO (Fallo Fenológico por Fin de Invierno): ${criticalAlerts[0]} En Jutiapa la temporada de lluvias culmina a finales de octubre; una siembra en septiembre u octubre traslada la floración a la sequía de noviembre. No viable a temporal sin riego artificial.`;
     } else if (probCalculada >= 0.70) {
       estado = 'ÓPTIMO';
       color = 'Verde';

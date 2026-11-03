@@ -308,32 +308,44 @@ export default async function handler(req, res) {
     const s3EndStr = s3End.toLocaleDateString('es-GT', { day: 'numeric', month: 'short' });
 
     const criticalAlerts = [];
-    if (s1Dry > 7) criticalAlerts.push("Falla crítica en Germinación (Etapa 1): >7 días continuos sin lluvia (<1 mm/día). Desecación de semilla.");
-    if (s1Wet > 5) criticalAlerts.push("Falla crítica en Germinación (Etapa 1): >5 días continuos con lluvia torrencial (>15 mm/día). Pudrición de simiente por anoxia.");
-    if (s3Dry > 4) criticalAlerts.push(`Falla letal en Floración (Etapa 3 del ${s3StartStr} al ${s3EndStr}): ${s3Dry} días continuos con lluvia < 2.0 mm/día. En este período las lluvias en Jutiapa ya finalizaron (inicio de época seca), provocando desecación letal de polen y estigmas (jilotes vacíos sin grano).`);
-    if (s2Dry > 10) criticalAlerts.push(`Falla en Desarrollo Vegetativo (Etapa 2): ${s2Dry} días secos continuos. Enanismo y retraso de masa foliar.`);
+    if (s1Dry > 7) criticalAlerts.push(`Falla en Germinación (Etapa 1): ${s1Dry} días continuos sin precipitación efectiva (< 1.0 mm/día).`);
+    if (s1Wet > 5) criticalAlerts.push(`Falla en Germinación (Etapa 1): ${s1Wet} días continuos con lluvia torrencial (> 15.0 mm/día).`);
+    if (s3Dry > 4) criticalAlerts.push(`Falla en Floración y Polinización (Etapa 3, del ${s3StartStr} al ${s3EndStr}): racha seca de ${s3Dry} días continuos (< 2.0 mm/día), excediendo el límite crítico de tolerancia fisiológica (máx. 4 días).`);
+    if (s2Dry > 10) criticalAlerts.push(`Falla en Desarrollo Vegetativo (Etapa 2): racha de ${s2Dry} días secos (< 1.5 mm/día).`);
 
     const total120Rain = +(p120.reduce((a, b) => a + b, 0)).toFixed(1);
-    if (total120Rain < 400) criticalAlerts.push(`Precipitación total del ciclo críticamente insuficiente: ${total120Rain} mm acumulados frente al mínimo de 400 mm.`);
+    if (total120Rain < 400) criticalAlerts.push(`Precipitación acumulada de 120 días insuficiente: ${total120Rain} mm proyectados (requerimiento fisiológico mínimo: 400.0 mm).`);
 
-    // Declaración y calibración del semáforo agronómico
+    const cobPct = +(etaEtcRatio * 100).toFixed(1);
+    const probPctStr = +(probCalculada * 100).toFixed(1);
+
+    // Veredicto agronómico derivado exclusivamente de las métricas simuladas por el modelo
     let semaforoEstado = 'NO SEMBRAR';
     let semaforoColor = 'Rojo';
-    let semaforoAccion = 'Riesgo crítico de fracaso hídrico por déficit en floración o canícula prolongada. No se recomienda siembra a temporal sin riego.';
+    let semaforoAccion = '';
 
-    if (criticalAlerts.length > 0) {
+    if (criticalAlerts.length > 0 || etaEtcRatio < 0.90 || waterlogDays > MAX_WATERLOG_DAYS) {
       probCalculada = Math.min(probCalculada, 0.35);
       semaforoEstado = 'NO SEMBRAR';
       semaforoColor = 'Rojo';
-      semaforoAccion = `DICTAMEN ADVERSO (Fallo Fenológico por Fin de Invierno): ${criticalAlerts[0]} En Jutiapa la temporada de lluvias culmina a finales de octubre; una siembra en septiembre u octubre traslada la floración a la sequía de noviembre. No viable a temporal sin riego artificial.`;
+
+      if (s3Dry > 4) {
+        semaforoAccion = `DICTAMEN TÉCNICO DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. El balance hídrico proyecta ${total120Rain} mm de precipitación frente a una demanda evaporativa de ${accEtc.toFixed(1)} mm (cobertura hídrica: ${cobPct}%, umbral mínimo de viabilidad: 90.0%). En la etapa crítica de Floración (días 56 al 75, del ${s3StartStr} al ${s3EndStr}), la lluvia simulada es de ${stage3Rain.toFixed(1)} mm, registrando una racha seca continua de ${s3Dry} días con precipitación < 2.0 mm/día (tolerancia máxima del modelo: 4 días). Se proyecta desecación irreversible de polen y esterilidad floral en siembra de temporal sin riego.`;
+      } else if (total120Rain < 400) {
+        semaforoAccion = `DICTAMEN TÉCNICO DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. El volumen de lluvia total simulado para el ciclo es de apenas ${total120Rain} mm frente a una demanda de ${accEtc.toFixed(1)} mm (déficit hídrico acumulado: ${(accEtc - total120Rain).toFixed(1)} mm). El cultivo incumple el umbral biológico mínimo de 400 mm para sostener rendimiento comercial.`;
+      } else if (waterlogDays > MAX_WATERLOG_DAYS) {
+        semaforoAccion = `DICTAMEN TÉCNICO DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. El modelo computa ${waterlogDays} días de anegamiento con drenaje superado (> 15.0 mm/día sobre capacidad de campo), superando el umbral de asfixia radicular (máximo 8 días).`;
+      } else {
+        semaforoAccion = `DICTAMEN TÉCNICO DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. La cobertura hídrica proyectada es del ${cobPct}% (${accEta.toFixed(1)} mm aprovechables vs ${accEtc.toFixed(1)} mm requeridos). Se detectan ${droughtStressDays} días de estrés hídrico durante el ciclo.`;
+      }
     } else if (probCalculada >= 0.70) {
       semaforoEstado = 'RECOMENDADO PARA SIEMBRA';
       semaforoColor = 'Verde';
-      semaforoAccion = 'Condiciones hídricas altamente favorables (cobertura > 90%). Proceder con siembra tecnificada en fecha programada.';
-    } else if (probCalculada >= 0.40) {
+      semaforoAccion = `DICTAMEN TÉCNICO DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. El balance hidrológico simula una cobertura de demanda del ${cobPct}% (${accEta.toFixed(1)} mm aprovechados de ${accEtc.toFixed(1)} mm demandados), con ${total120Rain} mm de lluvia acumulada sin rachas secas letales en floración (${stage3Rain.toFixed(1)} mm simulados en etapa 3, racha seca máxima: ${s3Dry} días, dentro de la tolerancia de 4 días).`;
+    } else {
       semaforoEstado = 'SIEMBRA CONDICIONADA';
       semaforoColor = 'Amarillo';
-      semaforoAccion = 'Riesgo hídrico moderado: emplear variedades precoces o tolerantes a sequía, labranza de conservación y monitoreo de humedad.';
+      semaforoAccion = `DICTAMEN TÉCNICO DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. Régimen hídrico intermedio con cobertura de demanda del ${cobPct}%. Se registra racha seca de ${s2Dry} días en desarrollo vegetativo (días 16 al 55). La viabilidad requiere mitigación mediante variedades de ciclo precoz o labranza conservacionista de humedad.`;
     }
 
     // Advertencias de Capital según costos históricos locales

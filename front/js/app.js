@@ -2149,21 +2149,21 @@ document.addEventListener('DOMContentLoaded', () => {
     let color = 'Rojo';
     let accion = '';
 
-    if (criticalAlerts.length > 0 || etaEtcRatio < 0.90 || waterlogDays > 8) {
+    if (criticalAlerts.length > 0 || etaEtcRatio < 0.65 || waterlogDays > 8) {
       probCalculada = Math.min(probCalculada, 0.35);
       estado = 'NO SEMBRAR';
       color = 'Rojo';
 
       if (s3Dry > 4) {
-        accion = `DICTAMEN DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. Precipitación proyectada en 120 días: ${total120Rain} mm vs demanda evaporativa de ${accEtc.toFixed(1)} mm (cobertura hídrica: ${cobPct}%, umbral mínimo: 90.0%). En Floración (Etapa 3, días 56 a 75): lluvia acumulada de ${stage3Rain.toFixed(1)} mm y racha seca de ${s3Dry} días consecutivos con lluvia < 2.0 mm/día (umbral de tolerancia: 4 días). Incumplimiento de requerimiento hídrico para siembra a temporal.`;
-      } else if (total120Rain < 400) {
-        accion = `DICTAMEN DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. Precipitación proyectada en 120 días: ${total120Rain} mm frente a una demanda de ${accEtc.toFixed(1)} mm (déficit hídrico acumulado: ${(accEtc - total120Rain).toFixed(1)} mm). Incumple el umbral mínimo biológico de 400.0 mm requeridos para el ciclo.`;
+        accion = `DICTAMEN DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. Precipitación proyectada en 120 días: ${total120Rain} mm vs demanda evaporativa de ${accEtc.toFixed(1)} mm (cobertura hídrica: ${cobPct}%, umbral mínimo: 85.0%). En Floración (Etapa 3, días 56 a 75): lluvia acumulada de ${stage3Rain.toFixed(1)} mm y racha seca de ${s3Dry} días consecutivos con lluvia < 2.0 mm/día (umbral de tolerancia: 4 días). Incumplimiento de requerimiento hídrico para siembra a temporal.`;
+      } else if (total120Rain < 350) {
+        accion = `DICTAMEN DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. Precipitación proyectada en 120 días: ${total120Rain} mm frente a una demanda de ${accEtc.toFixed(1)} mm (déficit hídrico acumulado: ${(accEtc - total120Rain).toFixed(1)} mm). Incumple el umbral mínimo biológico de 350.0 mm requeridos para el ciclo.`;
       } else if (waterlogDays > 8) {
         accion = `DICTAMEN DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. Anegamiento proyectado: ${waterlogDays} días con drenaje excedido (> 15.0 mm/día sobre saturación), superando el umbral de tolerancia radicular a la anoxia (8 días máximos).`;
       } else {
-        accion = `DICTAMEN DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. Cobertura hídrica proyectada: ${cobPct}% (${accEta.toFixed(1)} mm aprovechables vs ${accEtc.toFixed(1)} mm demandados). Estrés hídrico acumulado: ${droughtStressDays} días durante el ciclo.`;
+        accion = `DICTAMEN DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. Cobertura hídrica proyectada: ${cobPct}% (${accEta.toFixed(1)} mm aprovechables vs ${accEtc.toFixed(1)} mm demandados, umbral mínimo: 65.0%). Estrés hídrico acumulado: ${droughtStressDays} días durante el ciclo.`;
       }
-    } else if (probCalculada >= 0.70) {
+    } else if (probCalculada >= 0.70 && etaEtcRatio >= 0.85) {
       estado = 'ÓPTIMO';
       color = 'Verde';
       accion = `DICTAMEN DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. Cobertura hídrica proyectada: ${cobPct}% (${accEta.toFixed(1)} mm aprovechados de ${accEtc.toFixed(1)} mm demandados). Precipitación total en 120 días: ${total120Rain} mm. En Floración (Etapa 3, días 56 a 75): ${stage3Rain.toFixed(1)} mm acumulados y racha seca máxima de ${s3Dry} días (dentro del umbral de tolerancia de 4 días).`;

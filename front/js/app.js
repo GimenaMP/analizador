@@ -2133,19 +2133,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const s4Dry = getLongestStreak(p120.slice(75, 120), v => v < 1.5);
     const s4Wet = getLongestStreak(p120.slice(75, 120), v => v > 15.0);
 
-    const s3Start = new Date(sDate.getTime() + 55 * 24 * 60 * 60 * 1000);
-    const s3End = new Date(sDate.getTime() + 74 * 24 * 60 * 60 * 1000);
-    const s3StartStr = s3Start.toLocaleDateString('es-GT', { day: 'numeric', month: 'short' });
-    const s3EndStr = s3End.toLocaleDateString('es-GT', { day: 'numeric', month: 'short' });
-
     const criticalAlerts = [];
-    if (s1Dry > 7) criticalAlerts.push(`Falla en Germinación (Etapa 1): ${s1Dry} días continuos sin precipitación efectiva (< 1.0 mm/día).`);
-    if (s1Wet > 5) criticalAlerts.push(`Falla en Germinación (Etapa 1): ${s1Wet} días continuos con lluvia torrencial (> 15.0 mm/día).`);
-    if (s3Dry > 4) criticalAlerts.push(`Falla en Floración y Polinización (Etapa 3, del ${s3StartStr} al ${s3EndStr}): racha seca de ${s3Dry} días continuos (< 2.0 mm/día), excediendo el límite de tolerancia fisiológica (máx. 4 días).`);
-    if (s2Dry > 10) criticalAlerts.push(`Falla en Desarrollo Vegetativo (Etapa 2): racha de ${s2Dry} días secos (< 1.5 mm/día).`);
+    if (s1Dry > 7) criticalAlerts.push(`Falla en Germinación (Etapa 1, días 1-15): racha seca de ${s1Dry} días (< 1.0 mm/día).`);
+    if (s1Wet > 5) criticalAlerts.push(`Falla en Germinación (Etapa 1, días 1-15): racha torrencial de ${s1Wet} días (> 15.0 mm/día).`);
+    if (s3Dry > 4) criticalAlerts.push(`Falla en Floración y Polinización (Etapa 3, días 56-75): racha seca de ${s3Dry} días (< 2.0 mm/día).`);
+    if (s2Dry > 10) criticalAlerts.push(`Falla en Desarrollo Vegetativo (Etapa 2, días 16-55): racha seca de ${s2Dry} días (< 1.5 mm/día).`);
 
     const total120Rain = +(p120.reduce((a, b) => a + b, 0)).toFixed(1);
-    if (total120Rain < 400) criticalAlerts.push(`Precipitación acumulada de 120 días insuficiente: ${total120Rain} mm proyectados (mínimo fisiológico: 400.0 mm).`);
+    if (total120Rain < 400) criticalAlerts.push(`Precipitación total de 120 días insuficiente: ${total120Rain} mm (mínimo: 400.0 mm).`);
 
     const cobPct = +(etaEtcRatio * 100).toFixed(1);
     const probPctStr = +(probCalculada * 100).toFixed(1);
@@ -2160,22 +2155,22 @@ document.addEventListener('DOMContentLoaded', () => {
       color = 'Rojo';
 
       if (s3Dry > 4) {
-        accion = `DICTAMEN TÉCNICO DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. El balance hídrico proyecta ${total120Rain} mm de precipitación frente a una demanda evaporativa de ${accEtc.toFixed(1)} mm (cobertura hídrica: ${cobPct}%, umbral mínimo de viabilidad: 90.0%). En la etapa crítica de Floración (días 56 al 75, del ${s3StartStr} al ${s3EndStr}), la lluvia simulada es de ${stage3Rain.toFixed(1)} mm, registrando una racha seca continua de ${s3Dry} días con precipitación < 2.0 mm/día (tolerancia máxima del modelo: 4 días). Se proyecta desecación irreversible de polen y esterilidad floral en siembra de temporal sin riego.`;
+        accion = `DICTAMEN DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. Precipitación proyectada en 120 días: ${total120Rain} mm vs demanda evaporativa de ${accEtc.toFixed(1)} mm (cobertura hídrica: ${cobPct}%, umbral mínimo: 90.0%). En Floración (Etapa 3, días 56 a 75): lluvia acumulada de ${stage3Rain.toFixed(1)} mm y racha seca de ${s3Dry} días consecutivos con lluvia < 2.0 mm/día (umbral de tolerancia: 4 días). Incumplimiento de requerimiento hídrico para siembra a temporal.`;
       } else if (total120Rain < 400) {
-        accion = `DICTAMEN TÉCNICO DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. El volumen de lluvia total simulado para el ciclo es de apenas ${total120Rain} mm frente a una demanda de ${accEtc.toFixed(1)} mm (déficit hídrico acumulado: ${(accEtc - total120Rain).toFixed(1)} mm). El cultivo incumple el umbral biológico mínimo de 400 mm para sostener rendimiento comercial.`;
+        accion = `DICTAMEN DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. Precipitación proyectada en 120 días: ${total120Rain} mm frente a una demanda de ${accEtc.toFixed(1)} mm (déficit hídrico acumulado: ${(accEtc - total120Rain).toFixed(1)} mm). Incumple el umbral mínimo biológico de 400.0 mm requeridos para el ciclo.`;
       } else if (waterlogDays > 8) {
-        accion = `DICTAMEN TÉCNICO DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. El modelo computa ${waterlogDays} días de anegamiento con drenaje superado (> 15.0 mm/día sobre saturación), excediendo el umbral de asfixia radicular (máximo 8 días).`;
+        accion = `DICTAMEN DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. Anegamiento proyectado: ${waterlogDays} días con drenaje excedido (> 15.0 mm/día sobre saturación), superando el umbral de tolerancia radicular a la anoxia (8 días máximos).`;
       } else {
-        accion = `DICTAMEN TÉCNICO DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. La cobertura hídrica proyectada es del ${cobPct}% (${accEta.toFixed(1)} mm aprovechables vs ${accEtc.toFixed(1)} mm demandados). Se detectan ${droughtStressDays} días de estrés hídrico durante el ciclo.`;
+        accion = `DICTAMEN DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. Cobertura hídrica proyectada: ${cobPct}% (${accEta.toFixed(1)} mm aprovechables vs ${accEtc.toFixed(1)} mm demandados). Estrés hídrico acumulado: ${droughtStressDays} días durante el ciclo.`;
       }
     } else if (probCalculada >= 0.70) {
       estado = 'ÓPTIMO';
       color = 'Verde';
-      accion = `DICTAMEN TÉCNICO DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. El balance hidrológico simula una cobertura de demanda del ${cobPct}% (${accEta.toFixed(1)} mm aprovechados de ${accEtc.toFixed(1)} mm demandados), con ${total120Rain} mm de lluvia acumulada sin rachas secas letales en floración (${stage3Rain.toFixed(1)} mm simulados en etapa 3, racha seca máxima: ${s3Dry} días, dentro de la tolerancia de 4 días).`;
+      accion = `DICTAMEN DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. Cobertura hídrica proyectada: ${cobPct}% (${accEta.toFixed(1)} mm aprovechados de ${accEtc.toFixed(1)} mm demandados). Precipitación total en 120 días: ${total120Rain} mm. En Floración (Etapa 3, días 56 a 75): ${stage3Rain.toFixed(1)} mm acumulados y racha seca máxima de ${s3Dry} días (dentro del umbral de tolerancia de 4 días).`;
     } else {
       estado = 'CONDICIONADO O EN ALERTA';
       color = 'Amarillo';
-      accion = `DICTAMEN TÉCNICO DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. Régimen hídrico intermedio con cobertura de demanda del ${cobPct}%. Se registra racha seca de ${s2Dry} días en desarrollo vegetativo (días 16 al 55). La viabilidad requiere mitigación mediante variedades de ciclo precoz o labranza conservacionista de humedad.`;
+      accion = `DICTAMEN DEL MODELO: Viabilidad climática calculada en ${probPctStr}%. Cobertura hídrica proyectada: ${cobPct}%. Racha seca en desarrollo vegetativo (Etapa 2, días 16 a 55): ${s2Dry} días consecutivos con lluvia < 1.5 mm/día. Viabilidad condicionada a empleo de variedades precoces o retención edáfica de humedad.`;
     }
 
     const inversionQ = parseFloat(p.capital) || 7200;

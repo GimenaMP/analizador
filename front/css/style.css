@@ -1957,6 +1957,33 @@ button, a, [role="button"], .shape-btn, .capital-chip, .pdf-page-pill, .preset-c
   line-height: 1.35;
 }
 
+.vmetric-card.metric-pass {
+  border-left: 3px solid var(--green-accent);
+  background: #F4FBF7;
+}
+
+.vmetric-card.metric-pass .vmetric-value {
+  color: var(--green-dark);
+}
+
+.vmetric-card.metric-warn {
+  border-left: 3px solid var(--amber-dot);
+  background: #FFFDF5;
+}
+
+.vmetric-card.metric-warn .vmetric-value {
+  color: #B45309;
+}
+
+.vmetric-card.metric-fail {
+  border-left: 3px solid var(--red-dot);
+  background: #FEF7F7;
+}
+
+.vmetric-card.metric-fail .vmetric-value {
+  color: var(--red-text);
+}
+
 /* Validación Histórica Ex-Post */
 .historical-validation-box {
   margin-top: 22px;

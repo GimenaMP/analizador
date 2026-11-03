@@ -683,27 +683,27 @@
             </div>
           </div>
 
-          <!-- Parámetros de Evaluación Limpios y Modernos -->
+          <!-- Parámetros de Evaluación Limpios y Modernos (Métricas Dinámicas del Modelo) -->
           <div class="verdict-metrics-grid">
-            <div class="vmetric-card">
+            <div class="vmetric-card" id="vmetricCardCoverage">
               <span class="vmetric-label">Demanda de Agua</span>
-              <strong class="vmetric-value">90% mínimo</strong>
-              <span class="vmetric-sub">Cobertura de agua requerida</span>
+              <strong class="vmetric-value" id="vmetricCoverage">--%</strong>
+              <span class="vmetric-sub" id="vmetricCoverageSub">Meta: &ge; 85% requerida</span>
             </div>
-            <div class="vmetric-card">
+            <div class="vmetric-card" id="vmetricCardWaterlog">
               <span class="vmetric-label">Tolerancia a Saturación</span>
-              <strong class="vmetric-value">8 días máximo</strong>
-              <span class="vmetric-sub">Límite seguro de anegamiento</span>
+              <strong class="vmetric-value" id="vmetricWaterlog">-- días</strong>
+              <span class="vmetric-sub" id="vmetricWaterlogSub">Límite: &le; 8 días máx.</span>
             </div>
-            <div class="vmetric-card">
-              <span class="vmetric-label">Periodo Crítico</span>
-              <strong class="vmetric-value">60 días</strong>
-              <span class="vmetric-sub">Desde siembra hasta floración</span>
+            <div class="vmetric-card" id="vmetricCardCritical">
+              <span class="vmetric-label">Periodo Crítico (60 Días)</span>
+              <strong class="vmetric-value" id="vmetricCritical">-- mm</strong>
+              <span class="vmetric-sub" id="vmetricCriticalSub">Lluvia vs Demanda inicial</span>
             </div>
-            <div class="vmetric-card">
+            <div class="vmetric-card" id="vmetricCardConfidence">
               <span class="vmetric-label">Criterio de Seguridad</span>
-              <strong class="vmetric-value">70% de confianza</strong>
-              <span class="vmetric-sub">Umbral para siembra recomendada</span>
+              <strong class="vmetric-value" id="vmetricConfidence">--%</strong>
+              <span class="vmetric-sub" id="vmetricConfidenceSub">Umbral: &ge; 70% de confianza</span>
             </div>
           </div>
 

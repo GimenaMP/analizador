@@ -891,6 +891,111 @@ document.addEventListener('DOMContentLoaded', () => {
     verdictEnso.textContent = `Fase Climática: ${(data.fase_enso || 'Neutral').replace(/[()]/g, '').replace(/\s*\/\s*/g, ' o ')}`;
     verdictAction.textContent = data.semaforo_accion || '';
 
+    // Renderizado dinámico de las 4 tarjetas de evaluación agronómica
+    const cardCoverage = document.getElementById('vmetricCardCoverage');
+    const valCoverage = document.getElementById('vmetricCoverage');
+    const subCoverage = document.getElementById('vmetricCoverageSub');
+
+    const cardWaterlog = document.getElementById('vmetricCardWaterlog');
+    const valWaterlog = document.getElementById('vmetricWaterlog');
+    const subWaterlog = document.getElementById('vmetricWaterlogSub');
+
+    const cardCritical = document.getElementById('vmetricCardCritical');
+    const valCritical = document.getElementById('vmetricCritical');
+    const subCritical = document.getElementById('vmetricCriticalSub');
+
+    const cardConfidence = document.getElementById('vmetricCardConfidence');
+    const valConfidence = document.getElementById('vmetricConfidence');
+    const subConfidence = document.getElementById('vmetricConfidenceSub');
+
+    if (valCoverage) {
+      let covVal = null;
+      if (data.metricas_evaluacion && data.metricas_evaluacion.demanda_agua) {
+        covVal = data.metricas_evaluacion.demanda_agua.valor_pct;
+      } else if (data.balance_hidrico && typeof data.balance_hidrico.cobertura_demanda_pct === 'number') {
+        covVal = data.balance_hidrico.cobertura_demanda_pct;
+      } else if (data.timeline && data.timeline.precipAcc && data.timeline.etcAcc && data.timeline.etcAcc.length) {
+        const lastP = data.timeline.precipAcc[data.timeline.precipAcc.length - 1] || 0;
+        const lastEtc = data.timeline.etcAcc[data.timeline.etcAcc.length - 1] || 1;
+        covVal = +(Math.min(100, (lastP / Math.max(1, lastEtc)) * 100)).toFixed(1);
+      } else if (data.criterios_algoritmo && data.criterios_algoritmo.eta_etc_min) {
+        covVal = 85.0;
+      }
+
+      const covNum = covVal !== null ? parseFloat(covVal) : 85.0;
+      valCoverage.textContent = `${covNum.toFixed(1)}%`;
+      if (covNum >= 85.0) {
+        subCoverage.textContent = 'Meta: ≥ 85% (Requerimiento satisfecho)';
+        if (cardCoverage) cardCoverage.className = 'vmetric-card metric-pass';
+      } else if (covNum >= 65.0) {
+        subCoverage.textContent = 'Meta: ≥ 85% (Déficit hídrico moderado)';
+        if (cardCoverage) cardCoverage.className = 'vmetric-card metric-warn';
+      } else {
+        subCoverage.textContent = 'Meta: ≥ 85% (Déficit hídrico severo)';
+        if (cardCoverage) cardCoverage.className = 'vmetric-card metric-fail';
+      }
+    }
+
+    if (valWaterlog) {
+      let wDays = 0;
+      if (data.metricas_evaluacion && data.metricas_evaluacion.tolerancia_saturacion) {
+        wDays = data.metricas_evaluacion.tolerancia_saturacion.dias_anegamiento;
+      } else if (typeof data.anegamiento_dias === 'number') {
+        wDays = data.anegamiento_dias;
+      } else if (data.timeline && data.timeline.precipDaily) {
+        wDays = data.timeline.precipDaily.filter(p => p > 15.0).length;
+      }
+
+      valWaterlog.textContent = `${wDays} ${wDays === 1 ? 'día' : 'días'}`;
+      if (wDays <= 4) {
+        subWaterlog.textContent = 'Límite: ≤ 8 días (Drenaje adecuado)';
+        if (cardWaterlog) cardWaterlog.className = 'vmetric-card metric-pass';
+      } else if (wDays <= 8) {
+        subWaterlog.textContent = 'Límite: ≤ 8 días (Saturación moderada)';
+        if (cardWaterlog) cardWaterlog.className = 'vmetric-card metric-warn';
+      } else {
+        subWaterlog.textContent = 'Límite: ≤ 8 días (Anoxia radicular)';
+        if (cardWaterlog) cardWaterlog.className = 'vmetric-card metric-fail';
+      }
+    }
+
+    if (valCritical) {
+      let rain60 = 0;
+      let etc60 = 0;
+      if (data.timeline && data.timeline.precipAcc && data.timeline.precipAcc.length) {
+        rain60 = data.timeline.precipAcc[data.timeline.precipAcc.length - 1] || 0;
+        etc60 = data.timeline.etcAcc ? (data.timeline.etcAcc[data.timeline.etcAcc.length - 1] || 0) : 0;
+      } else if (data.metricas_evaluacion && data.metricas_evaluacion.periodo_critico) {
+        rain60 = data.metricas_evaluacion.periodo_critico.lluvia_60d_mm;
+        etc60 = data.metricas_evaluacion.periodo_critico.etc_60d_mm;
+      }
+
+      valCritical.textContent = `${rain60.toFixed(1)} mm`;
+      subCritical.textContent = `Acumulado en 60 días (ETc: ${etc60.toFixed(1)} mm)`;
+      if (etc60 > 0 && rain60 >= etc60 * 0.85) {
+        if (cardCritical) cardCritical.className = 'vmetric-card metric-pass';
+      } else if (etc60 > 0 && rain60 >= etc60 * 0.65) {
+        if (cardCritical) cardCritical.className = 'vmetric-card metric-warn';
+      } else {
+        if (cardCritical) cardCritical.className = 'vmetric-card metric-fail';
+      }
+    }
+
+    if (valConfidence) {
+      valConfidence.textContent = `${probPct}%`;
+      const pNum = parseFloat(probPct);
+      if (pNum >= 70.0) {
+        subConfidence.textContent = 'Umbral: ≥ 70% (Alta viabilidad)';
+        if (cardConfidence) cardConfidence.className = 'vmetric-card metric-pass';
+      } else if (pNum >= 40.0) {
+        subConfidence.textContent = 'Umbral: ≥ 70% (Siembra condicionada)';
+        if (cardConfidence) cardConfidence.className = 'vmetric-card metric-warn';
+      } else {
+        subConfidence.textContent = 'Umbral: ≥ 70% (Alto riesgo climático)';
+        if (cardConfidence) cardConfidence.className = 'vmetric-card metric-fail';
+      }
+    }
+
     // Validación Histórica Ex-Post
     const histBox = document.getElementById('historicalValidationBox');
     const histBadge = document.getElementById('histValBadge');
@@ -2331,6 +2436,36 @@ document.addEventListener('DOMContentLoaded', () => {
         suelo_textura: "26.0% Arcilla, 52.0% Arena, 1.8% MO",
         prob_optimo_min: 0.70,
         prob_alerta_min: 0.40
+      },
+      metricas_evaluacion: {
+        demanda_agua: {
+          valor_pct: cobPct,
+          umbral_min_pct: 85.0,
+          cumple: cobPct >= 85.0,
+          label: `${cobPct}%`,
+          sub: cobPct >= 85.0 ? "Meta satisfecha (≥ 85% mín.)" : `Déficit hídrico (${cobPct}% vs ≥ 85%)`
+        },
+        tolerancia_saturacion: {
+          dias_anegamiento: waterlogDays,
+          max_dias_tolerados: MAX_WATERLOG_DAYS,
+          cumple: waterlogDays <= MAX_WATERLOG_DAYS,
+          label: `${waterlogDays} ${waterlogDays === 1 ? 'día' : 'días'}`,
+          sub: waterlogDays <= MAX_WATERLOG_DAYS ? "Drenaje adecuado (≤ 8 días máx.)" : `Exceso radicular (${waterlogDays} días > 8 máx.)`
+        },
+        periodo_critico: {
+          dias: 60,
+          lluvia_60d_mm: +(timelinePrecipAcc[timelinePrecipAcc.length - 1] || 0),
+          etc_60d_mm: +(timelineEtcAcc[timelineEtcAcc.length - 1] || 0),
+          label: `${+(timelinePrecipAcc[timelinePrecipAcc.length - 1] || 0)} mm`,
+          sub: `Lluvia acumulada 60 días (ETc: ${+(timelineEtcAcc[timelineEtcAcc.length - 1] || 0)} mm)`
+        },
+        criterio_seguridad: {
+          confianza_pct: +(probCalculada * 100).toFixed(1),
+          umbral_optimo_pct: 70.0,
+          cumple: (probCalculada * 100) >= 70.0,
+          label: `${(probCalculada * 100).toFixed(1)}%`,
+          sub: (probCalculada * 100) >= 70.0 ? "Confianza alta (≥ 70% umbral)" : (probCalculada * 100) >= 40.0 ? "Alerta/condicionado (40-69%)" : "Riesgo no apto (< 40%)"
+        }
       },
       evaluacion_historica: p.date === '2026-06-01' ? {
         disponible: true,

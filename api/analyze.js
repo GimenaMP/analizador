@@ -519,6 +519,36 @@ export default async function handler(req, res) {
         prob_optimo_min: 0.70,
         prob_alerta_min: 0.40
       },
+      metricas_evaluacion: {
+        demanda_agua: {
+          valor_pct: cobPct,
+          umbral_min_pct: 85.0,
+          cumple: cobPct >= 85.0,
+          label: `${cobPct}%`,
+          sub: cobPct >= 85.0 ? "Meta satisfecha (≥ 85% mín.)" : `Déficit hídrico (${cobPct}% vs ≥ 85%)`
+        },
+        tolerancia_saturacion: {
+          dias_anegamiento: waterlogDays,
+          max_dias_tolerados: MAX_WATERLOG_DAYS,
+          cumple: waterlogDays <= MAX_WATERLOG_DAYS,
+          label: `${waterlogDays} ${waterlogDays === 1 ? 'día' : 'días'}`,
+          sub: waterlogDays <= MAX_WATERLOG_DAYS ? "Drenaje adecuado (≤ 8 días máx.)" : `Exceso radicular (${waterlogDays} días > 8 máx.)`
+        },
+        periodo_critico: {
+          dias: 60,
+          lluvia_60d_mm: +(timelinePrecipAcc[timelinePrecipAcc.length - 1] || 0),
+          etc_60d_mm: +(timelineEtcAcc[timelineEtcAcc.length - 1] || 0),
+          label: `${+(timelinePrecipAcc[timelinePrecipAcc.length - 1] || 0)} mm`,
+          sub: `Lluvia acumulada 60 días (ETc: ${+(timelineEtcAcc[timelineEtcAcc.length - 1] || 0)} mm)`
+        },
+        criterio_seguridad: {
+          confianza_pct: +(probCalculada * 100).toFixed(1),
+          umbral_optimo_pct: 70.0,
+          cumple: (probCalculada * 100) >= 70.0,
+          label: `${(probCalculada * 100).toFixed(1)}%`,
+          sub: (probCalculada * 100) >= 70.0 ? "Confianza alta (≥ 70% umbral)" : (probCalculada * 100) >= 40.0 ? "Alerta/condicionado (40-69%)" : "Riesgo no apto (< 40%)"
+        }
+      },
       evaluacion_historica: sowingDate === '2026-06-01' ? {
         disponible: true,
         eta_etc_real: 0.88,

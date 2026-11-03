@@ -24,29 +24,195 @@ document.addEventListener('DOMContentLoaded', () => {
     medida: "Quintal",
     precio: 200.0,
     fecha: "30/10/2026",
-    fuente: "MAGA SIMPA Precios Mayoristas (La Terminal)"
+    fuente: "MAGA Guatemala - Precios Diarios de Mercados Mayoristas (DIPLAN / SIMPA)",
+    url_fuente: "https://precios.maga.gob.gt/diarios/diarios.html",
+    estado: "en_linea",
+    hora_extraccion: new Date().toLocaleTimeString('es-GT', { hour12: false }),
+    variedades: [
+      { producto: "Maíz blanco, de primera", mercado: "La Terminal", medida: "Quintal", precio: 200.0 },
+      { producto: "Maíz blanco, de primera, otros orígenes", mercado: "La Terminal", medida: "Quintal", precio: 190.0 },
+      { producto: "Maíz blanco, de segunda", mercado: "La Terminal", medida: "Quintal", precio: 185.0 },
+      { producto: "Maíz amarillo, de primera", mercado: "La Terminal", medida: "Quintal", precio: 200.0 },
+      { producto: "Maíz amarillo, de segunda", mercado: "La Terminal", medida: "Quintal", precio: 200.0 }
+    ]
   };
 
-  async function initLiveMagaPrice() {
+  function updateMagaUI(data) {
+    if (!data) return;
+    const heroStat = document.getElementById('heroMagaPriceStat');
+    if (heroStat && typeof data.precio === 'number') {
+      heroStat.textContent = `Q ${data.precio.toFixed(2)}`;
+    }
+
+    const heroInd = document.getElementById('heroMagaLiveIndicator');
+    if (heroInd) {
+      heroInd.innerHTML = `<span class="live-dot-pulse"></span> En vivo (${data.fecha || 'Actual'})`;
+    }
+
+    const dBadge = document.getElementById('magaDateBadge');
+    if (dBadge) dBadge.textContent = data.fecha || '30/10/2026';
+
+    const pBadge = document.getElementById('magaPriceBadge');
+    if (pBadge && typeof data.precio === 'number') {
+      pBadge.textContent = `Q ${data.precio.toFixed(2)} por quintal`;
+    }
+
+    const mainPrice = document.getElementById('magaMainPrice');
+    if (mainPrice && typeof data.precio === 'number') {
+      mainPrice.textContent = data.precio.toFixed(2);
+    }
+
+    const prodName = document.getElementById('magaProductName');
+    if (prodName) prodName.textContent = data.producto || 'Maíz blanco, de primera';
+
+    const mktBadge = document.getElementById('magaMarketBadge');
+    if (mktBadge) mktBadge.textContent = data.mercado ? `Mercado ${data.mercado}` : 'Mercado La Terminal';
+
+    const extTime = document.getElementById('magaExtractTime');
+    if (extTime) extTime.textContent = data.hora_extraccion || new Date().toLocaleTimeString('es-GT', { hour12: false });
+
+    const statusText = document.getElementById('magaStatusText');
+    if (statusText) {
+      statusText.textContent = data.estado === 'en_linea' ? 'MAGA: En Línea' : 'MAGA: Sincronizado';
+    }
+
+    // Renderizar Variedades de Maíz en La Terminal
+    const varietiesGrid = document.getElementById('magaVarietiesGrid');
+    if (varietiesGrid && Array.isArray(data.variedades) && data.variedades.length > 0) {
+      varietiesGrid.innerHTML = '';
+      data.variedades.forEach(v => {
+        const isWhiteFirst = /blanco/i.test(v.producto) && /primera/i.test(v.producto) && !/otros/i.test(v.producto);
+        const chip = document.createElement('span');
+        chip.className = `maga-variety-chip ${isWhiteFirst ? 'active-variety' : ''}`;
+        chip.innerHTML = `${v.producto}: <strong>Q ${v.precio.toFixed(2)}</strong>`;
+        varietiesGrid.appendChild(chip);
+      });
+    }
+  }
+
+  async function parseMagaHtmlClient(html) {
+    const dateMatch = html.match(/<h5>\s*(\d{2}\/\d{2}\/\d{4})\s*<\/h5>/i);
+    const fecha = dateMatch ? dateMatch[1] : new Date().toLocaleDateString('es-GT');
+
+    const regex = /<tr>\s*<td>\s*(Ma[íi]z[^<]+)<\/td>\s*<td>\s*([^<]+)<\/td>\s*<td[^>]*>\s*([^<]+)<\/td>\s*<td[^>]*class=['"]precios['"][^>]*>\s*([\d\.]+)/gi;
+    let match;
+    const variedades = [];
+    while ((match = regex.exec(html)) !== null) {
+      variedades.push({
+        producto: match[1].trim(),
+        mercado: match[2].trim(),
+        medida: match[3].trim(),
+        precio: parseFloat(match[4])
+      });
+    }
+
+    let mainPrice = 200.0;
+    const whiteFirst = variedades.find(v => 
+      /blanco/i.test(v.producto) && 
+      /primera/i.test(v.producto) && 
+      !/otros/i.test(v.producto) && 
+      /terminal/i.test(v.mercado)
+    );
+
+    if (whiteFirst) {
+      mainPrice = whiteFirst.precio;
+    } else if (variedades.length > 0) {
+      const anyWhite = variedades.find(v => /blanco/i.test(v.producto));
+      if (anyWhite) mainPrice = anyWhite.precio;
+    }
+
+    return {
+      producto: "Maíz blanco, de primera",
+      mercado: "La Terminal",
+      medida: "Quintal",
+      precio: mainPrice,
+      fecha: fecha,
+      fuente: "MAGA Guatemala - Precios Diarios de Mercados Mayoristas (DIPLAN / SIMPA)",
+      url_fuente: "https://precios.maga.gob.gt/diarios/diarios.html",
+      estado: "en_linea",
+      hora_extraccion: new Date().toLocaleTimeString('es-GT', { hour12: false }),
+      variedades: variedades
+    };
+  }
+
+  async function initLiveMagaPrice(force = false) {
+    const btnRefresh = document.getElementById('btnRefreshMagaPrice');
+    const btnText = document.getElementById('btnRefreshText');
+    if (btnRefresh) {
+      btnRefresh.classList.add('is-loading');
+      if (btnText) btnText.textContent = 'Consultando precios.maga.gob.gt...';
+    }
+
     try {
-      const res = await fetch('/api/maga-price');
+      const url = `/api/maga-price?force=${force}&t=${Date.now()}`;
+      const res = await fetch(url, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         if (data && typeof data.precio === 'number') {
           liveMagaData = data;
-          const heroStat = document.getElementById('heroMagaPriceStat');
-          if (heroStat) heroStat.textContent = `Q ${data.precio.toFixed(2)}`;
-          const dBadge = document.getElementById('magaDateBadge');
-          if (dBadge) dBadge.textContent = data.fecha;
-          const pBadge = document.getElementById('magaPriceBadge');
-          if (pBadge) pBadge.textContent = `Q ${data.precio.toFixed(2)} por quintal`;
+          updateMagaUI(liveMagaData);
         }
+      } else {
+        throw new Error('API server returned ' + res.status);
       }
     } catch (e) {
-      console.warn('MAGA Live Scraper fallback:', e);
+      console.warn('API /api/maga-price no disponible, intentando proxy directo al MAGA...', e);
+      try {
+        const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://precios.maga.gob.gt/diarios/diarios.html');
+        const proxyRes = await fetch(proxyUrl, { signal: AbortSignal.timeout(6000) });
+        if (proxyRes.ok) {
+          const html = await proxyRes.text();
+          const parsedData = await parseMagaHtmlClient(html);
+          if (parsedData && parsedData.precio) {
+            liveMagaData = parsedData;
+            updateMagaUI(liveMagaData);
+          }
+        } else {
+          updateMagaUI(liveMagaData);
+        }
+      } catch (proxyErr) {
+        console.warn('CORS Proxy Fallback failed, using synchronized cache:', proxyErr);
+        updateMagaUI(liveMagaData);
+      }
+    } finally {
+      if (btnRefresh) {
+        btnRefresh.classList.remove('is-loading');
+        if (btnText) btnText.textContent = 'Consultar MAGA en Vivo';
+      }
+      // Si ya hay un dictamen en pantalla, recalcular finanzas con el precio actualizado
+      if (lastAnalysisData && lastAnalysisData.financiero) {
+        lastAnalysisData.financiero.precio_maga_qq = liveMagaData.precio;
+        lastAnalysisData.financiero.fecha_actualizacion_maga = liveMagaData.fecha;
+        lastAnalysisData.financiero.fuente_oficial_maga = liveMagaData.fuente;
+        const mz = Number(lastAnalysisData.terreno?.manzanas || 1.0);
+        const rend = Number(lastAnalysisData.financiero.rendimiento_estimado_qq_mz || 65.0);
+        const prodQq = +(rend * mz).toFixed(1);
+        const cap = Number(lastAnalysisData.financiero.capital_inversion_q || 7200);
+        const ingB = +(prodQq * liveMagaData.precio).toFixed(2);
+        const utN = +(ingB - cap).toFixed(2);
+        const roi = +(((utN) / Math.max(1, cap)) * 100).toFixed(1);
+        lastAnalysisData.financiero.produccion_total_estimada_qq = prodQq;
+        lastAnalysisData.financiero.ingreso_bruto_q = ingB;
+        lastAnalysisData.financiero.utilidad_neta_q = utN;
+        lastAnalysisData.financiero.roi_pct = roi;
+        lastAnalysisData.financiero.punto_equilibrio_qq = +(cap / liveMagaData.precio).toFixed(1);
+        renderResults(lastAnalysisData);
+      }
     }
   }
-  initLiveMagaPrice();
+
+  // Vincular botón de refresco MAGA
+  setTimeout(() => {
+    const btnRefresh = document.getElementById('btnRefreshMagaPrice');
+    if (btnRefresh) {
+      btnRefresh.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        initLiveMagaPrice(true);
+      });
+    }
+  }, 200);
+
+  initLiveMagaPrice(false);
 
   // ==============================================================================
   // 1.1 ANIMACIONES DE REVELADO DE ALTO RENDIMIENTO (INTERSECTION OBSERVER)

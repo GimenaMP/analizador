@@ -84,7 +84,7 @@
 
           <div class="stat-cell">
             <span class="stat-number" id="heroMagaPriceStat">Q 200.00</span>
-            <span class="stat-label">Precio oficial MAGA </span>
+            <span class="stat-label">Precio oficial MAGA <span class="maga-live-indicator" id="heroMagaLiveIndicator"><span class="live-dot-pulse"></span> En vivo</span></span>
           </div>
         </div>
       </div>
@@ -829,8 +829,64 @@
           </div>
         </div>
 
-        <!-- BENTO FILA 3: PROYECCIÓN FINANCIERA MAGA -->
+        <!-- BENTO FILA 3: PROYECCIÓN FINANCIERA MAGA & MONITOREO DE PRECIOS -->
         <div class="finance-box-clean reveal-on-scroll from-bottom delay-2">
+          <div class="bento-header-clean">
+            <div class="box-title-group">
+              <h3 class="box-title-clean">Proyección Financiera y Precios Mayoristas Oficiales MAGA</h3>
+              <p class="box-subtitle-clean" style="margin: 3px 0 0; font-size: 0.82rem; color: var(--text-secondary);">Cotizaciones oficiales en tiempo real de la Dirección de Planeamiento (DIPLAN / SIMPA)</p>
+            </div>
+            <div class="maga-status-pill" id="magaStatusPill">
+              <span class="live-dot-pulse"></span>
+              <span id="magaStatusText">MAGA: En Línea</span>
+            </div>
+          </div>
+
+          <!-- Módulo de Precios Oficiales en Tiempo Real -->
+          <div class="maga-live-panel">
+            <div class="maga-panel-top">
+              <div class="maga-panel-info">
+                <div class="maga-tag-title">MÓDULO DE PRECIOS OFICIALES EN TIEMPO REAL (SCRAPER AUTOMÁTICO)</div>
+                <div class="maga-product-highlight">
+                  <span class="maga-product-name" id="magaProductName">Maíz blanco, de primera</span>
+                  <span class="maga-market-badge" id="magaMarketBadge">Mercado La Terminal</span>
+                </div>
+                <div class="maga-meta-row">
+                  <span><strong>Fecha Boletín MAGA:</strong> <span id="magaDateBadge">30/10/2026</span></span>
+                  <span class="maga-sep">•</span>
+                  <span><strong>Última Extracción:</strong> <span id="magaExtractTime">--:--:--</span></span>
+                  <span class="maga-sep">•</span>
+                  <span><a href="https://precios.maga.gob.gt/diarios/diarios.html" target="_blank" rel="noopener noreferrer" class="maga-source-link">Ver boletín oficial en MAGA ↗</a></span>
+                </div>
+              </div>
+              <div class="maga-panel-action">
+                <div class="maga-price-display">
+                  <span class="maga-currency">Q</span>
+                  <span class="maga-amount" id="magaMainPrice">200.00</span>
+                  <span class="maga-unit">/ Quintal</span>
+                </div>
+                <button type="button" id="btnRefreshMagaPrice" class="btn-refresh-maga" title="Forzar consulta directa a precios.maga.gob.gt">
+                  <svg class="refresh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                  </svg>
+                  <span id="btnRefreshText">Consultar MAGA en Vivo</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Variedades de maíz reportadas hoy en La Terminal -->
+            <div class="maga-varieties-container" id="magaVarietiesContainer">
+              <div class="maga-varieties-title">Variedades de Maíz Reportadas en La Terminal (DIPLAN / SIMPA):</div>
+              <div class="maga-varieties-grid" id="magaVarietiesGrid">
+                <span class="maga-variety-chip active-variety">Maíz blanco, de primera: <strong>Q 200.00</strong></span>
+                <span class="maga-variety-chip">Maíz blanco, de primera (otros orígenes): <strong>Q 190.00</strong></span>
+                <span class="maga-variety-chip">Maíz blanco, de segunda: <strong>Q 185.00</strong></span>
+                <span class="maga-variety-chip">Maíz amarillo, de primera: <strong>Q 200.00</strong></span>
+                <span class="maga-variety-chip">Maíz amarillo, de segunda: <strong>Q 200.00</strong></span>
+              </div>
+            </div>
+          </div>
+
           <!-- 4 KPIs Financieros -->
           <div class="kpis-clean-grid">
             <div class="kpi-tile-clean">

@@ -60,10 +60,12 @@ class AgroServerHandler(SimpleHTTPRequestHandler):
         if self.path.startswith("/api/maga-price"):
             try:
                 from core.maga_scraper import fetch_maga_white_corn_price
-                data = fetch_maga_white_corn_price()
+                force = ("force=true" in self.path) or ("t=" in self.path)
+                data = fetch_maga_white_corn_price(force=force)
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
                 self.end_headers()
                 self.wfile.write(json.dumps(data).encode("utf-8"))
             except Exception as e:
@@ -85,6 +87,7 @@ class AgroServerHandler(SimpleHTTPRequestHandler):
                 self.send_response(413)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
                 self.end_headers()
                 self.wfile.write(json.dumps({
                     "success": False,
@@ -125,6 +128,7 @@ class AgroServerHandler(SimpleHTTPRequestHandler):
                     self.send_response(400)
                     self.send_header("Content-Type", "application/json; charset=utf-8")
                     self.send_header("Access-Control-Allow-Origin", "*")
+                    self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
                     self.end_headers()
                     self.wfile.write(json.dumps({
                         "success": False,
@@ -204,6 +208,7 @@ class AgroServerHandler(SimpleHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
                 self.end_headers()
                 self.wfile.write(json.dumps(response_data, default=str).encode("utf-8"))
 
@@ -214,6 +219,7 @@ class AgroServerHandler(SimpleHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
                 self.end_headers()
                 self.wfile.write(json.dumps({"success": False, "error": str(e)}, default=str).encode("utf-8"))
         else:
@@ -224,6 +230,7 @@ class AgroServerHandler(SimpleHTTPRequestHandler):
         """Soporte para preflight CORS."""
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()

@@ -59,8 +59,8 @@ export default async function handler(req, res) {
 
     // Obtener precio en tiempo real mediante scraper oficial del MAGA
     const magaData = await getLiveMagaPrice();
-    const precioMAGA = magaData.precio || 235.0;
-    const fechaMAGA = magaData.fecha || '09/10/2026';
+    const precioMAGA = magaData.precio || 200.0;
+    const fechaMAGA = magaData.fecha || '30/10/2026';
 
     // 1. Cálculo Geométrico del Terreno (RF-05)
     let areaM2 = 7000;
